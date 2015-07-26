@@ -1,0 +1,171 @@
+#!/bin/bash
+
+VERSION="3.0"
+
+USERNAME=$(whoami)
+PROFILE="vanilla"
+SERVERPATH="/home/$USERNAME/${PROFILE}Minecraft"
+FILE="/home/$USERNAME/${PROFILE}Minecraft/logs/latest.log"
+
+ops() {
+    OPS=$(grep "name" "${SERVERPATH}"/ops.json | sed 's/    "name": "\([a-zA-Z0-9_.-][a-zA-Z0-9_.-]*\)",/\1/')
+    OPS=$(echo "$OPS" | tr '\n' ' ' | sed -e 's/^ *//' -e 's/ *$//' -e 's/ /\|/g')
+    echo "ops: $OPS"
+}
+
+players() {
+    NUMPLAYERS=$(command "list" && sleep .2 && grep "players online" "${FILE}" | tail -1 | sed 's/.*\([0-9][0-9]*\)\/[0-9].*/\1/')
+}
+
+say() {
+    # Sends the contents to the screen and prints it as the server
+    screen -p 0 -S "$PROFILE" -X stuff "say $*$(printf \\r)"
+}
+
+text() {
+    # Sends the contents to the screen as pure text
+    screen -p 0 -S "$PROFILE" -X stuff "tellraw $1 {text:\"${*:2}\"}$(printf \\r)"
+}
+
+command() {
+    # Sends the contents to the screen and executes it
+    screen -p 0 -S "$PROFILE" -X stuff "$*$(printf \\r)"
+}
+
+commandBlock() {
+    # Sends the contents to the screen and executes it...for command blocks!
+    screen -p 0 -S "$PROFILE" -X stuff "setblock $1 $2 $3 minecraft:command_block 1 replace {Command:$4}$(printf \\r)"
+}
+
+is_running() {
+    # Checks for the screen running the server
+    if ( pgrep -u "$USERNAME" -f "SCREEN -dmS ${PROFILE}" > /dev/null ); then
+        # It's running
+        return 0
+    else
+        # It's not
+        return 1
+    fi
+}
+
+READLINES=$(wc -l < "${FILE}")
+ops
+while true; do
+    LINES=$(wc -l < "${FILE}")
+    
+    if [ "$READLINES" -gt "$LINES" ]; then
+        ((READLINES = ( $LINES - 1 ) ))
+    fi
+    
+    while [ "$READLINES" -lt "$LINES" ]; do
+        ((READLINES += 1))
+        CURRENTLINE=$(sed "${READLINES}q;d" "${FILE}")
+        echo "${READLINES}: ${CURRENTLINE}"
+
+        if echo "${CURRENTLINE}" | grep -q "\[[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\]\ \[Server\ thread/INFO\]:\ \(\§f\)\?[0-9a-zA-Z_][0-9a-zA-Z_]*\(\§r\)\? "; then
+            PLAYER=$(echo "${CURRENTLINE}" | sed 's|\[[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\]\ \[Server\ thread/INFO\]:\ \(\§f\)\?\([0-9a-zA-Z_][0-9a-zA-Z_]*\)\(\§r\)\? .*|\2|')
+            MESSAGELINE=$(echo "${CURRENTLINE}" | sed 's|\[[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\]\ \[Server\ thread/INFO\]:\ \(\§f\)\?[0-9a-zA-Z_][0-9a-zA-Z_]*\(\§r\)\? \(.*\)|\3|')
+
+            if echo "${MESSAGELINE}" | grep -q "joined the game"; then
+                echo "$(date +%x-%X) ${PLAYER} joined the game" >> "${SERVERPATH}/logs/chat.log"
+                players
+                sleep 1.8
+                text "$PLAYER" "Welcome to Rycieos' jaguar Minecraft server!"
+
+                if [ -s "${SERVERPATH}/times/${PLAYER}.time" ]; then
+                    TIME=$(cat "${SERVERPATH}/times/${PLAYER}.time")
+                    text "$PLAYER" "You were last logged in at ${TIME}"
+                else
+                    text "$PLAYER" "This is your first time on this server!"
+                    command "execute $PLAYER ~ ~ ~ summon FireworksRocketEntity ~ ~ ~ {LifeTime:20,Motion:[0.00,0.50,0.00],FireworksItem:{id:401,Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:0,Trail:1,Colors:[11861826],FadeColors:[1519359,1236991]}]}}}}"
+                fi
+
+                if [ "$NUMPLAYERS" -lt 2 ]; then
+                    TIME=$(cat "${SERVERPATH}/times/latest")
+                    text "$PLAYER" "The last time someone was online was ${TIME}"
+                else
+                    text "$PLAYER" "There are ${NUMPLAYERS} players online right now"
+                fi
+
+                text "$PLAYER" "The end is off limits until 1.9 is released"
+                text "$PLAYER" "For more info about the server and its features, say !info in chat"
+            fi
+
+            if echo "${MESSAGELINE}" | grep -q "left the game"; then
+                echo "$(date +%x-%X) ${PLAYER} left the game" >> "${SERVERPATH}/logs/chat.log"
+                date +%-a\ %-b\ %-e,\ %-l:%M\ %p\ %Y > "${SERVERPATH}/times/${PLAYER}.time"
+                echo "${PLAYER} at $(date +%-a\ %-b\ %-e,\ %-l:%M\ %p\ %Y)" > "${SERVERPATH}/times/latest"
+            fi
+    
+        elif echo "${CURRENTLINE}" | grep -E -i -q "(Opped |De-opped )"; then
+            ops
+        fi
+
+        # Quit if not chat
+        if echo "${CURRENTLINE}" | grep -q "\[[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\]\ \[Server\ thread/INFO\]:\ <\§f.*\§r>"; then
+            CHATLINE=$(echo "${CURRENTLINE}" | sed 's|\[[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\]\ \[Server\ thread/INFO\]:\ <\§f.*\§r>\ ||')
+            PLAYER=$(echo "${CURRENTLINE}" | sed 's|\[[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\]\ \[Server\ thread/INFO\]:\ <\§f\([0-9a-zA-Z_][0-9a-zA-Z_]*\)\§r> .*|\1|')
+
+            echo "$(date +%x-%X) <${PLAYER}> ${CHATLINE}" >> "${SERVERPATH}/logs/chat.log"
+        else
+            continue
+            #CHATLINE=$CURRENTLINE
+        fi
+
+        if echo "${CHATLINE}" | grep -q "^!playerinfo"; then
+            LOOKUPPLAYER=$(echo "${CHATLINE}" | sed 's|!playerinfo \([0-9a-zA-Z_][0-9a-zA-Z_]*\)\ *|\1|')
+            if [ -s "${SERVERPATH}/times/${LOOKUPPLAYER}.time" ]; then
+                TIME=$(cat "${SERVERPATH}/times/${LOOKUPPLAYER}.time")
+                text "$PLAYER" "${LOOKUPPLAYER} was last logged in at ${TIME}"
+            else
+                text "$PLAYER" "${LOOKUPPLAYER} was not found. Useage: !playerinfo PlayerName"
+            fi
+
+        elif echo "${CHATLINE}" | grep -q "^!playerlist"; then
+            text "$PLAYER" "Whitelist:"
+            WHITELIST=$(cat "${SERVERPATH}/whitelist.json" | grep '"name": ' | sed 's|    "name": "\([0-9a-zA-Z_][0-9a-zA-Z_]*\)"|\1,|' | tr '\n' ' ')
+            text "$PLAYER" "$WHITELIST"
+        
+        elif echo "${CHATLINE}" | grep -q "^!firework"; then
+            text "$PLAYER" "Fine."
+            command "execute $PLAYER ~ ~ ~ summon FireworksRocketEntity ~ ~ ~ {LifeTime:20,Motion:[0.00,0.50,0.00],FireworksItem:{id:401,Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:0,Trail:1,Colors:[11861826],FadeColors:[1519359,1236991]}]}}}}"
+
+        elif echo "${CHATLINE}" | grep -q "^!info"; then
+            text "$PLAYER" "Player heads: when one player kills another, the killed player's head will drop"
+            text "$PLAYER" "No Endermen griefing: Endermen can't pick up blocks"
+            text "$PLAYER" "Death count: Each player has their death count next to their name in the tab screen"
+            text "$PLAYER" "Interactive server: Server commands to provide help and info. Say !help to list commands"
+
+        elif echo "${CHATLINE}" | grep -q "^!help"; then
+            text "$PLAYER" "Server command list:"
+            text "$PLAYER" "!help    view this help menu"
+            text "$PLAYER" "!info    view server info"
+            text "$PLAYER" "!playerinfo PlayerName   display last login time of PlayerName"
+            text "$PLAYER" "!playerlist    display the server whitelist"
+
+        elif echo "${CHATLINE}" | grep -q "^!"; then
+            COMMAND=$(echo "${CHATLINE}" | sed 's|!\([a-zA-Z0-9][a-zA-Z0-9]*\) .*|\1|')
+            text "$PLAYER" "${COMMAND} is not a recognized command. Use !help for a list of commands"
+
+        elif echo "${CHATLINE}" | grep -i "server" | grep -i "how many" | grep -i -q "players are"; then
+            players
+            say "There are $NUMPLAYERS in the game."
+
+        elif echo "${CHATLINE}" | grep -E -i "(hello |hi |hey )" | grep -q "server"; then
+            if echo "${PLAYER}" | grep -E -q "(${OPS})"; then
+                say "Hello there, Master."
+            else
+                say "Hello there, tribute."
+            fi
+    
+        elif echo "${CHATLINE}" | grep -i "you there" | grep -i -q "server"; then
+            if echo "${PLAYER}" | grep -E -q "(${OPS})"; then
+                say "I am here, Master."
+            else
+                say "Yes I am, watching your every move."
+            fi
+        fi
+        
+    done
+    sleep .2
+done
