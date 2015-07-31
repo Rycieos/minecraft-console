@@ -14,7 +14,7 @@ ops() {
 }
 
 players() {
-    NUMPLAYERS=$(command "list" && sleep .2 && grep "players online" "${FILE}" | tail -1 | sed 's/.*\([0-9][0-9]*\)\/[0-9].*/\1/')
+    NUMPLAYERS=$(command "list" && sleep .5 && grep "players online" "${FILE}" | tail -1 | sed 's/.*\([0-9][0-9]*\)\/[0-9].*/\1/')
 }
 
 say() {
@@ -69,7 +69,7 @@ while true; do
             if echo "${MESSAGELINE}" | grep -q "joined the game"; then
                 echo "$(date +%x-%X) ${PLAYER} joined the game" >> "${SERVERPATH}/logs/chat.log"
                 players
-                sleep 1.8
+                sleep 1.5
                 text "$PLAYER" "Welcome to Rycieos' jaguar Minecraft server!"
 
                 if [ -s "${SERVERPATH}/times/${PLAYER}.time" ]; then
