@@ -41,7 +41,7 @@ vanilla() {
     BACKUPPATH="/home/$USERNAME/backup/${PROFILE}Minecraft"
     WORLD="world"
     find_jar
-    COMMAND="${JAVA} -Xincgc -Xmx4G -Xms2G -XX:PermSize=128m -jar $JARNAME nogui"
+    COMMAND="${JAVA} -Xincgc -Xmx4G -Xms2G -jar $JARNAME nogui"
     UPDATEABLE="vanilla"
 }
 
@@ -52,7 +52,7 @@ modded() {
     BACKUPPATH="/home/$USERNAME/backup/${PROFILE}Minecraft"
     WORLD="world"
     find_jar
-    COMMAND="${JAVA} -Xincgc -Xmx4G -Xms2G -XX:PermSize=128m -cp $JARNAME cpw.mods.fml.relauncher.ServerLaunchWrapper nogui"
+    COMMAND="${JAVA} -Xincgc -Xmx4G -Xms2G -cp $JARNAME cpw.mods.fml.relauncher.ServerLaunchWrapper nogui"
     UPDATEABLE="false"
 }
 
@@ -63,7 +63,7 @@ beta() {
     BACKUPPATH="/home/$USERNAME/backup/${PROFILE}Minecraft"
     WORLD="world"
     find_jar
-    COMMAND="${JAVA} -Xincgc -Xmx4G -Xms2G -XX:PermSize=128m -jar $JARNAME nogui"
+    COMMAND="${JAVA} -Xincgc -Xmx4G -Xms2G -jar $JARNAME nogui"
     UPDATEABLE="snapshot"
 }
 
