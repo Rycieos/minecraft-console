@@ -3,9 +3,23 @@
 VERSION="3.0"
 
 USERNAME=$(whoami)
-PROFILE="vanilla"
-SERVERPATH="/home/$USERNAME/${PROFILE}Minecraft"
-FILE="/home/$USERNAME/${PROFILE}Minecraft/logs/latest.log"
+
+CONFIG_FILE="/home/$USERNAME/.config/java_console.config"
+if ! [ -e "${CONFIG_FILE}" ]; then
+    echo "No config file was found"
+    echo "Please run console config to make one"
+    exit 1
+fi
+
+find_jar() {
+    : # Need blank function to prevent errors
+}
+
+source "$CONFIG_FILE"
+PROFILE="$1"
+$PROFILE || { echo "Profile ${PROFILE} was not found. Run console config to add it"; exit 1; }
+
+FILE="${SERVERPATH}/logs/latest.log"
 
 ops() {
     OPS=$(grep "name" "${SERVERPATH}"/ops.json | sed 's/    "name": "\([a-zA-Z0-9_.-][a-zA-Z0-9_.-]*\)",/\1/')
