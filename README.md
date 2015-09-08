@@ -20,7 +20,7 @@ cronic is a script meant to wrap cron jobs to make cron more sane. You can get i
 
 `listener` will watch a log file, and perform actions based on what the server prints to the file. To use it, run something like:
 
-`screen -dmS listener listener`
+`screen -dmS listener listener vanilla`
 
 This will start it in background mode. To kill it, connect to the screen (`screen -r listener`) and Ctrl-C.
 

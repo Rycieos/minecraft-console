@@ -17,6 +17,13 @@ find_jar() {
 
 source "$CONFIG_FILE"
 PROFILE="$1"
+
+if [ -z "$PROFILE" ]; then
+    echo "Pass a profile name in as the argument"
+    echo "Example: $0 vanilla"
+    exit 1
+fi
+
 $PROFILE || { echo "Profile ${PROFILE} was not found. Run console config to add it"; exit 1; }
 
 FILE="${SERVERPATH}/logs/latest.log"
