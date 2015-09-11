@@ -300,6 +300,12 @@ case "$2" in
             echo "Backing up the $PROFILE server..."
         fi
         
+        if ! [ -L "$BACKUPPATH" ]; then
+            echo "The backup path $BACKUPPATH for the profile $PROFILE does not exist!"
+            echo "Creating it now..."
+            mkdir "$BACKUPPATH"
+        fi 
+
         if is_running; then
             echo "Suspending saves on the $PROFILE server..."
             if [ "$TYPE" == "minecraft" ]; then
