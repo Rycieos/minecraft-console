@@ -300,7 +300,7 @@ case "$2" in
             echo "Backing up the $PROFILE server..."
         fi
         
-        if ! [ -L "$BACKUPPATH" ]; then
+        if [ ! -d "$BACKUPPATH" ]; then
             echo "The backup path $BACKUPPATH for the profile $PROFILE does not exist!"
             echo "Creating it now..."
             mkdir "$BACKUPPATH"
