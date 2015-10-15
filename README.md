@@ -5,7 +5,7 @@ These scripts can really manage any Java server, if they are configured correctl
 
 # Console
 
-`console` manages the server's startup, shutdown, backups, and much more. It works as a manager, leaving the server running as the daemon. Everything is configured by running `console config`. It supports multiple servers, multiple worlds per server, and infinite backups. To change the world in a server, edit the world name in the config file, and have a separate server.properties file in each world folder.
+`console` manages the server's startup, shutdown, backups, and much more. It works as a manager, leaving the server running as the daemon. Everything is configured by running `console config`. It supports multiple servers, multiple worlds (maps) per server, and infinite backups. To change the world (map) in a server, edit the world name in the config file, and have a separate server.properties file in each world folder.
 
 **Backups**
 

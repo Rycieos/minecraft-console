@@ -6,6 +6,10 @@ USERNAME=$(whoami)
 
 CONFIG_FILE="/home/$USERNAME/.config/java_console.config"
 
+if [ ! -d "/home/$USERNAME/.config" ]; then
+    mkdir "/home/$USERNAME/.config"
+fi
+
 if ! [ -e "${CONFIG_FILE}" ]; then
     touch "${CONFIG_FILE}"
     cat > "${CONFIG_FILE}" <<'endofconfig'
@@ -224,6 +228,7 @@ case "$2" in
             fi
         else
             echo "Could not find jar file $JARNAME, aborting"
+            echo "If this is the first time running the server, run $0 $PROFILE update"
             exit 5
         fi
     ;;
