@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="5.0"
+VERSION="5.1"
 
 USERNAME=$(whoami)
 
@@ -214,14 +214,20 @@ case "$2" in
             fi
             if [ -x "$JARNAME" ]; then  
                 # Launch it
-                screen -dmS "$PROFILE" $COMMAND &
-                echo "$PROFILE server launched..."
-                # Make sure it is running
-                sleep 2
-                if is_running; then
-                    echo "$PROFILE server started."
+
+                if [ "$3" == "debug" ]; then
+                    # Launch without screen for easier debugging
+                    $COMMAND
                 else
-                    echo "$PROFILE server seemes to have crashed!"
+                    screen -dmS "$PROFILE" $COMMAND &
+                    echo "$PROFILE server launched..."
+                    # Make sure it is running
+                    sleep 2
+                    if is_running; then
+                        echo "$PROFILE server started."
+                    else
+                        echo "$PROFILE server seemes to have crashed!"
+                    fi
                 fi
             else
                 echo "$JARNAME is not exectuable, cannot start the server"
