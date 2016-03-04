@@ -45,7 +45,7 @@ say() {
 
 text() {
     # Sends the contents to the screen as pure text
-    screen -p 0 -S "$PROFILE" -X stuff "tellraw $1 {text:\"${*:2}\"}$(printf \\r)"
+    screen -p 0 -S "$PROFILE" -X stuff "tellraw $1 {\"text\":\"${*:2}\"}$(printf \\r)"
 }
 
 command() {
@@ -107,7 +107,6 @@ while true; do
                     text "$PLAYER" "There are ${NUMPLAYERS} players online right now"
                 fi
 
-                text "$PLAYER" "The end is off limits until 1.9 is released"
                 text "$PLAYER" "For more info about the server and its features, say !info in chat"
             fi
 
