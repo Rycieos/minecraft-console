@@ -399,13 +399,13 @@ case "$2" in
                 # Awkward pieces of code that strip the current Minecraft versions from the version file
                 CURRENT_VERSION=$(wget -q -O - https://s3.amazonaws.com/Minecraft.Download/versions/versions.json |
                                     grep "\"release\":" |
-                                    sed 's/    "release": "\([0-9a-zA-Z.-][0-9a-zA-Z.-]*\)"/\1/' |
+                                    sed 's/    "release": "\([0-9a-zA-Z.-]\+\)"/\1/' |
                                     tr -d '[:space:]')
                 echo "The newest stable version is ${CURRENT_VERSION}"
             elif [ "$UPDATEABLE" == "snapshot" ]; then
                 CURRENT_VERSION=$(wget -q -O - https://s3.amazonaws.com/Minecraft.Download/versions/versions.json |
                                     grep "\"snapshot\":" |
-                                    sed 's/    "snapshot": "\([0-9a-zA-Z.-][0-9a-zA-Z.-]*\)",/\1/' |
+                                    sed 's/    "snapshot": "\([0-9a-zA-Z.-]\+\)",/\1/' |
                                     tr -d '[:space:]')
                 echo "The newest snapshot is ${CURRENT_VERSION}"
             else
