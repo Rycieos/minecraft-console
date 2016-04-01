@@ -144,8 +144,11 @@ while true; do
             continue
         fi
 
-        if echo "${CHATLINE}" | grep -q "^!playerinfo"; then
-            LOOKUPPLAYER=$(echo "${CHATLINE}" | sed 's|!playerinfo \([0-9a-zA-Z_]\+\)\ .*|\1|')
+        if echo "${CHATLINE}" | grep -q "kappa"; then
+            text "@a" "░░░░▄▀▀▀▀▀█▀▄▄▄▄░░░░\n░░▄▀▒▓▒▓▓▒▓▒▒▓▒▓▀▄░░\n▄▀▒▒▓▒▓▒▒▓▒▓▒▓▓▒▒▓█░\n█▓▒▓▒▓▒▓▓▓░░░░░░▓▓█░\n█▓▓▓▓▓▒▓▒░░░░░░░░▓█░\n▓▓▓▓▓▒░░░░░░░░░░░░█░\n▓▓▓▓░░░░▄▄▄▄░░░▄█▄▀░\n░▀▄▓░░▒▀▓▓▒▒░░█▓▒▒░░\n▀▄░░░░░░░░░░░░▀▄▒▒█░\n░▀░▀░░░░░▒▒▀▄▄▒▀▒▒█░\n░░▀░░░░░░▒▄▄▒▄▄▄▒▒█░\n░░░▀▄▄▒▒░░░░▀▀▒▒▄▀░░\n░░░░░▀█▄▒▒░░░░▒▄▀░░░\n░░░░░░░░▀▀█▄▄▄▄▀░░░░"
+
+        elif echo "${CHATLINE}" | grep -q "^!playerinfo"; then
+            LOOKUPPLAYER=$(echo "${CHATLINE}" | sed 's|!playerinfo \([0-9a-zA-Z_]\+\)\ *.*|\1|')
             if [ -s "${TIMES}/${LOOKUPPLAYER}.time" ]; then
                 TIME=$(cat "${TIMES}/${LOOKUPPLAYER}.time")
                 text "$PLAYER" "${LOOKUPPLAYER} was last logged in at ${TIME}"
@@ -182,7 +185,7 @@ while true; do
             text "$PLAYER" "!maprequest    update the online map"
 
         elif echo "${CHATLINE}" | grep -q "^!"; then
-            COMMAND=$(echo "${CHATLINE}" | sed 's|!\([a-zA-Z0-9_]\+\) .*|\1|')
+            COMMAND=$(echo "${CHATLINE}" | sed 's|!\([a-zA-Z0-9_]\+\)\ *.*|\1|')
             text "$PLAYER" "${COMMAND} is not a recognized command. Use !help for a list of commands"
 
         elif echo "${CHATLINE}" | grep -i "server" | grep -i "how many" | grep -i -q "players are"; then
