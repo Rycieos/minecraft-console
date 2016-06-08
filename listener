@@ -24,7 +24,7 @@ if [ -z "$PROFILE" ]; then
     exit 1
 fi
 
-$PROFILE || { echo "Profile ${PROFILE} was not found. Run console config to add it"; exit 1; }
+$PROFILE || { echo "Profile ${PROFILE} was not found. Run console add <type> to add it"; exit 1; }
 
 ## Regexes
 # Player event:
