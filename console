@@ -376,7 +376,7 @@ see() {
 
     cat > /tmp/screenconfig <<EOF
 startup_message off
-screen -t 'console' sh -c "tail -n 64 --follow=name ${server_path}/logs/latest.log"
+screen -t 'console' sh -c "tail -n 1000 --follow=name ${server_path}/logs/latest.log"
 screen -t 'shell' bash -c "$0 shell ${profile}"
 split
 focus down
