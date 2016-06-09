@@ -491,7 +491,7 @@ config() {
     fi
     if ! [ -e "${CONFIG_FILE}" ]; then
         touch "${CONFIG_FILE}"
-        cat > "${CONFIG_FILE}" <<'endofconfig'
+        cat > "${CONFIG_FILE}" <<'EOF'
 # Default time for stopping and restarting
 default_time=5
 
@@ -521,7 +521,7 @@ java="java"
 # The list of servers that the "all" commands will use
 profile_list=()
 
-endofconfig
+EOF
         echo "Base config created. Run \"$0 new <type>\" to add your first profile."
         return 0
     fi
