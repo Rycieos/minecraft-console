@@ -688,6 +688,11 @@ case "${SWITCH}" in
         shell
         exit $?
     ;;
+    listener)
+        load_profile
+        . minecraft-listener console
+        exit $?
+    ;;
     # Profile agnostic
     list)
         list

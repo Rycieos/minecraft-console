@@ -1,29 +1,12 @@
 #!/bin/bash
 
 VERSION="4.0"
-USERNAME=$(whoami)
-CONFIG_FILE="/home/$USERNAME/.config/java_console.config"
 
-if ! [ -e "${CONFIG_FILE}" ]; then
-    echo "No config file was found"
-    echo "Please run console config to make one"
+if [ "$1" != "console" ]; then
+    echo "Needs to be called from console script."
+    echo "eg: console listener vanilla"
     exit 1
 fi
-
-find_jar() {
-    : # Need blank function to prevent errors
-}
-
-source "${CONFIG_FILE}"
-profile="$1"
-
-if [ -z "${profile}" ]; then
-    echo "Pass a profile name in as the argument"
-    echo "Example: $0 vanilla"
-    exit 1
-fi
-
-${profile} >& /dev/null || { echo "Profile ${profile} was not found. Run console add <type> to add it"; exit 1; }
 
 ## Regexes
 # Player event:
@@ -56,30 +39,9 @@ players() {
     num_players=$(command "list" && sleep 2 && grep "players" "${LOG_FILE}" | grep "online" | tail -1 | sed 's/.*\ \([0-9]\+\).*/\1/')
 }
 
-say() {
-    # Sends the contents to the screen and prints it as the server
-    screen -p 0 -S "${profile}" -X stuff "say $*$(printf \\r)"
-}
-
 text() {
     # Sends the contents to the screen as pure text to a specific player
-    screen -p 0 -S "${profile}" -X stuff "tellraw $1 {\"text\":\"${*:2}\"}$(printf \\r)"
-}
-
-command() {
-    # Sends the contents to the screen and executes it
-    screen -p 0 -S "${profile}" -X stuff "$*$(printf \\r)"
-}
-
-is_running() {
-    # Checks for the screen running the process
-    if ( pgrep -u "$USERNAME" -f "SCREEN -dmS $1" > /dev/null ); then
-        # It's running
-        return 0
-    else
-        # It's not
-        return 1
-    fi
+    send_server "tellraw $1 {\"text\":\"${*:2}\"}"
 }
 
 read_lines=$(wc -l < "${LOG_FILE}")
@@ -183,7 +145,7 @@ while true; do
             if is_running "updatemap"; then
                 text "${player}" "A map update is already running. Please wait for the current one to finish."
             else
-                say "Updating online map."
+                send_server "say Updating online map."
                 screen -dmS "updatemap" ${MINECRAFT_MAP_COMMAND} &
             fi
 
@@ -204,23 +166,23 @@ while true; do
 
         elif echo "${chat_line}" | grep -i "server" | grep -i "how many" | grep -i -q "players are"; then
             players
-            say "There are ${num_players} in the game."
+            send_server "say There are ${num_players} in the game."
 
         elif echo "${chat_line}" | grep -i "what" | grep -i "you say" | grep -i -q "server"; then
-            say "Unfortunately, not much."
+            send_server "say Unfortunately, not much."
 
         elif echo "${chat_line}" | grep -E -i "(hello |hi |hey |heyo )" | grep -q "server"; then
             if echo "${player}" | grep -E -q "(${ops})"; then
-                say "Hello there, Master."
+                send_server "say Hello there, Master."
             else
-                say "Hello there, little one."
+                send_server "say Hello there, little one."
             fi
     
         elif echo "${chat_line}" | grep -i "you there" | grep -i -q "server"; then
             if echo "${player}" | grep -E -q "(${ops})"; then
-                say "I am here, Master."
+                send_server "say I am here, Master."
             else
-                say "Yes I am, watching your every move."
+                send_server "say Yes I am, watching your every move."
             fi
         fi
         
