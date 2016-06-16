@@ -22,13 +22,6 @@ MINECRAFT_MAP_COMMAND="/home/mark/bin/minecraftmap request"
 LOGIN_MESSAGE="Welcome to Rycieos' jaguar Minecraft server!"
 TIMES_PATH="${server_path}/times"
 
-# What is run when players say "!info" in chat. $1 is player name.
-info() {
-    text "$1" "No Endermen griefing: Endermen can't pick up blocks"
-    text "$1" "Death count: Each player has their death count next to their name in the tab screen"
-    text "$1" "Interactive server: Server commands to provide help and info. Say !help to list commands"
-}
-
 ops() {
     ops=$(grep "name" "${server_path}"/ops.json | sed 's/    "name": "\([a-zA-Z0-9_.-][a-zA-Z0-9_.-]*\)",/\1/')
     ops=$(echo "${ops}" | tr '\n' ' ' | sed -e 's/^ *//' -e 's/ *$//' -e 's/ /\|/g')
@@ -107,7 +100,7 @@ while true; do
             continue
         fi
 
-        if echo "${chat_line}" | grep -q "kappa"; then
+        if [[ $chat_line == *"kappa"* ]]; then
             text "@a" "░░░░▄▀▀▀▀▀█▀▄▄▄▄░░░░"
             text "@a" "░░▄▀▒▓▒▓▓▒▓▒▒▓▒▓▀▄░░"
             text "@a" "▄▀▒▒▓▒▓▒▒▓▒▓▒▓▓▒▒▓█░"
@@ -123,7 +116,7 @@ while true; do
             text "@a" "░░░░░▀█▄▒▒░░░░▒▄▀░░░"
             text "@a" "░░░░░░░░▀▀█▄▄▄▄▀░░░░"
 
-        elif echo "${chat_line}" | grep -q "^!playerinfo"; then
+        elif [[ $chat_line == "!playerinfo "* ]]; then
             lookup_player=$(echo "${chat_line}" | sed 's|!playerinfo \([0-9a-zA-Z_]\+\)\ *.*|\1|')
             if [ -s "${TIMES_PATH}/${lookup_player}.time" ]; then
                 time=$(cat "${TIMES_PATH}/${lookup_player}.time")
@@ -132,16 +125,16 @@ while true; do
                 text "${player}" "${lookup_player} was not found. Useage: !playerinfo PlayerName"
             fi
 
-        elif echo "${chat_line}" | grep -q "^!playerlist"; then
+        elif [[ $chat_line == "!playerlist" ]]; then
             text "${player}" "Whitelist:"
             whitelist=$(cat "${server_path}/whitelist.json" | grep '"name": ' | sed 's|    "name": "\([0-9a-zA-Z_]\+\)"|\1,|' | tr '\n' ' ')
             text "${player}" "${whitelist}"
-        
-        elif echo "${chat_line}" | grep -q "^!firework"; then
+
+        elif [[ $chat_line == "!firework" ]]; then
             text "${player}" "Fine."
             command "execute ${player}" "${FIREWORK}"
 
-        elif echo "${chat_line}" | grep -q "^!maprequest"; then
+        elif [[ $chat_line == "!maprequest" ]]; then
             if is_running "updatemap"; then
                 text "${player}" "A map update is already running. Please wait for the current one to finish."
             else
@@ -149,10 +142,13 @@ while true; do
                 screen -dmS "updatemap" ${MINECRAFT_MAP_COMMAND} &
             fi
 
-        elif echo "${chat_line}" | grep -q "^!info"; then
-            info "${player}"
+        elif [[ $chat_line == "!info" ]]; then
+            text "${player}" "Interactive server: Server commands to provide help and info. Say !help to list commands"
+            for info in "${info_text[@]}"; do
+                text "${player}" "${info}"
+            done
 
-        elif echo "${chat_line}" | grep -q "^!help"; then
+        elif [[ $chat_line == "!help" ]]; then
             text "${player}" "Server command list:"
             text "${player}" "!help    view this help menu"
             text "${player}" "!info    view server info"
@@ -160,7 +156,7 @@ while true; do
             text "${player}" "!playerlist    display the server whitelist"
             text "${player}" "!maprequest    update the online map"
 
-        elif echo "${chat_line}" | grep -q "^!"; then
+        elif [[ $chat_line == "!"* ]]; then
             command=$(echo "${chat_line}" | sed 's|!\([a-zA-Z0-9_]\+\)\ *.*|\1|')
             text "${player}" "${command} is not a recognized command. Use !help for a list of commands"
 
@@ -185,7 +181,6 @@ while true; do
                 send_server "say Yes I am, watching your every move."
             fi
         fi
-        
     done
     sleep .2
 done
