@@ -140,6 +140,10 @@ start() {
         sleep 2
         if is_running; then
             echo "${profile} server started."
+            # Start the listener if needed
+            if [ "${listener}" == "true" ]; then
+                listener-start
+            fi
         else
             echo "${profile} server seemes to have crashed!"
         fi
@@ -183,6 +187,11 @@ stop() {
     if is_running; then
         echo "Server is not shutting down cleanly."
         return 1
+    fi
+
+    # Stop the listener if needed
+    if [ "${listener}" == "true" ]; then
+        listener-stop
     fi
     
     echo "Done."
@@ -452,6 +461,14 @@ shell() {
     done
 }
 
+listener-start() {
+    screen -dmS "${profile}-listener" $0 listener "${profile}" &
+}
+
+listener-stop() {
+    screen -S "${profile}-listener" -X quit >& /dev/null
+}
+
 new() {
     # Add new profile to config
     if [ ! "$1" ] || [ "$1" == "minecraft" ] || [ "$1" == "vanilla" ]; then
@@ -559,7 +576,7 @@ EOF
 help_text() {
     # Help text
     echo "Java server script version $VERSION by Rycieos"
-    echo "Usage: $0 [start|stop|restart|try-restart|backup|say|command|status|update|see|list|config|new] <profile-name>|all "
+    echo "Usage: $0 [start|stop|restart|try-restart|backup|say|command|status|update|see|listener-start|listener-stop|listener-restart|list|config|new] <profile-name>|all "
     echo "Profile settings are at ~/.config/java_console.config. Use $0 config to edit"
     exit 1
 }
@@ -632,24 +649,20 @@ case "${SWITCH}" in
     start)
         load_profile strict
         start "$3"
-        exit $?
     ;;
     stop)
         load_profile strict
         stop "$3"
-        exit $?
     ;;
     restart)
         load_profile strict
         stop "$3"
         start "$3"
-        exit $?
     ;;
     try-restart)
         load_profile strict
         if is_running; then
             stop "$3" && start "$3"
-            exit $?
         fi
     ;;
     status)
@@ -659,39 +672,44 @@ case "${SWITCH}" in
     backup)
         load_profile strict
         backup "$3"
-        exit $?
     ;;
     say)
         load_profile strict
         shift 2
         say "$*"
-        exit $?
     ;;
     command)
         load_profile strict
         shift 2
         command "$*"
-        exit $?
     ;;
     update)
         load_profile
         update "$3"
-        exit $?
     ;;
     see|console)
         load_profile strict
         see
-        exit $?
     ;;
     shell)
         load_profile
         shell
-        exit $?
     ;;
     listener)
         load_profile
         . minecraft-listener console
-        exit $?
+    ;;
+    listener-start)
+        load_profile
+        listener-start
+    ;;
+    listener-stop)
+        listener-stop
+    ;;
+    listener-restart)
+        load_profile
+        listener-stop
+        listener-start
     ;;
     # Profile agnostic
     list)
@@ -699,12 +717,11 @@ case "${SWITCH}" in
     ;;
     new)
         new "$2"
-        exit $?
     ;;
     config)
         config
-        exit $?
     ;;
     *)
         help_text
 esac
+exit $?
