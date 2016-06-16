@@ -16,8 +16,17 @@ if [ "$UID" == "0" ]; then
     echo ""
     exit 1
 fi
-        
+
 # Functions
+defaults() {
+    # Default server path is in the root
+    server_path="${server_root}/${profile}"
+    # Default java
+    java="java"
+    # Default time
+    default_time=5
+}
+
 find_jar() {
     # Search for the jar file to run if one was not specified in the profile
     jar_name=$(find "${server_path}/" -maxdepth 1 -name "minecraft*.jar" -type f -printf "%f\n")
@@ -55,7 +64,7 @@ check_config() {
         echo "Profile ${profile} has blank 'server_command': '${server_command}'"
     elif [ "${updateable}" != "vanilla" ] && [ "${updateable}" != "snapshot" ] && [ "${updateable}" != "false" ]; then
         echo "Profile ${profile} has unsupported 'updateable' of '${updateable}'"
-
+    
     elif [ "$1" == "strict" ]; then
         if [ ! -d "${server_path}/${world}" ]; then
             echo "Profile ${profile} has 'world' that does not exist: '${world}'"
@@ -105,7 +114,7 @@ start() {
             ln -f "${player_list_path}"/minecraft.banlist "${server_path}"/banned-players.json
         fi
     fi
-
+    
     if [ "${eula}" == "true" ]; then
         echo "eula=true" > "${server_path}/eula.txt"
     fi
@@ -537,6 +546,7 @@ EOF
     source "${CONFIG_FILE}"
     
     for profile in "${profile_list[@]}"; do
+        defaults
         ${profile} >& /dev/null || { echo "Profile ${profile} was not found, but it was in the profile list."; return 1; }
         check_config
     done
@@ -557,6 +567,7 @@ load_profile() {
         help_text
     fi
     # Load the profile's settings by calling it as a function
+    defaults
     ${profile} >& /dev/null || { echo "Profile ${profile} was not found. Run \"$0 new <type>\" to add it"; exit 1; }
     check_config "$1"
 }
