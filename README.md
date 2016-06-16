@@ -50,6 +50,15 @@ Commands:
 * `help`        display a quick list of commands
 * `exit`        exits the shell/console
 
+### listener-start
+Will start the listener for the profile. Can be done automaticly if set in the config.
+
+### listener-stop
+Will stop the listener for the profile. Same as above.
+
+### listener-restart
+Restarts the listener for the profile. Good for loading new config changes.
+
 ### list
 Lists the profiles that are configured
 
@@ -64,30 +73,30 @@ Displays a quick help text.
 
 
 ## Config
-List of config options:
+General config options (all are optional besides profile_list):
 * `default_time`      the default time that stop will wait before closing the server
+* `server_root`       the default root path where the servers are stored.
 * `player_list_path`  the path where the minecraft.* files are stored for sharing with every server. If not specified, each server will use their own lists.
 * `eula`              if true, console will set each server's eula to true to save time.
 * `java`              the java command to use to launch the servers. Useful if you have a specific version of java for Minecraft.
 * `profile_list`      the list of profiles used when `all` is specified instead of of profile name. If a profile is not in this list, it will work normally, but it will not be part of `all` nor scanned for config errors.
+
 Profile specific:
 * `type`              the type of server. Right now, only minecraft is supported.
 * `autostart`         if the server should be started when `console start all` is run. This allows profiles to be configured without needing to run automaticlly.
-* `server_path`       the location of the server directory. Where the server files are saved.
+* `server_path`       the location of the server directory. Where the server files are saved. If not specified, will default to `server_root/profile_name`.
 * `backup_path`       the location of the backup directory. If not specified, backups will be disabled for that profile.
 * `world`             the name of the world directory. This allows multiple worlds (maps) to be used per profile. Put a different server.properties file in each world directory, then change the `world` option to select the different world to use.
 * `jar_name`          the jar file to run for the profile. If the profile is of type vanilla or snapshot, you can specify the function `find_jar` instead to use the only jar file in the directory. This allows for updating without changing the config.
 * `server_command`    the command to run when starting the server. Probably want to have `${java}` at the beginning and `${jar_name}` after the -jar flag.
 * `updateable`        the type of server if updating is wanted, false otherwise. This is used to discover what version to update the profile.
+* `listener`          if the listener for the profile should be started when the server is started. Defaults to false.
+* `info_text`         the array of strings that the listener will print to a player when they say `!info` in game. Defaults to empty.
 
 
 ## Listener
 
-`listener` will watch a log file, and perform actions based on what the server prints to the file. To use it, run something like:
-
-`screen -dmS listener listener vanilla`
-
-This will start it in background mode. To kill it, connect to the screen (`screen -r listener`) and Ctrl-C.
+`minecraft-listener` will watch a log file, and perform actions based on what the server prints to the file.
 
 It adds many nifty features, such as:
 * Sending players messages when they login.
@@ -97,7 +106,7 @@ It adds many nifty features, such as:
 * Logging all chat to log/chat.log to have a log file without all of the crap.
 
 Commands:
-* !info - list info about the server
+* !info - list customized info about the server
 * !help - list server commands
 * !playerlist - print the whitelist
 * !playerinfo [playername] - show the last logout time of playername
