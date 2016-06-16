@@ -1,0 +1,186 @@
+#!/bin/bash
+
+VERSION="4.0"
+
+if [ "$1" != "console" ]; then
+    echo "Needs to be called from console script."
+    echo "eg: console listener vanilla"
+    exit 1
+fi
+
+## Regexes
+# Player event:
+# \[(?:[0-9]{2}:*){3}\]\ \[Server\ thread\/INFO\]:\ (?:\§[0-9a-r])?([0-9a-zA-Z_]+)(?:\§[0-9a-r])? (.*)
+# Player chat:
+# \[(?:[0-9]{2}:*){3}\]\ \[Server\ thread\/INFO\]:\ <(?:\§[0-9a-r])?([0-9a-zA-Z_]+)(?:\§[0-9a-r])?> (.*)
+
+LOG_FILE="${server_path}/logs/latest.log"
+# Won't work on 1.7.X, but it won't do any harm either
+FIREWORK="~ ~ ~ summon FireworksRocketEntity ~ ~ ~ {LifeTime:20,FireworksItem:{id:fireworks,Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:0,Trail:1,Colors:[2723327,13565739],FadeColors:[13344511]}]}}}}"
+CHAT_FILE="${server_path}/logs/chat.log"
+MINECRAFT_MAP_COMMAND="/home/mark/bin/minecraftmap request"
+LOGIN_MESSAGE="Welcome to Rycieos' jaguar Minecraft server!"
+TIMES_PATH="${server_path}/times"
+
+ops() {
+    ops=$(grep "name" "${server_path}"/ops.json | sed 's/    "name": "\([a-zA-Z0-9_.-][a-zA-Z0-9_.-]*\)",/\1/')
+    ops=$(echo "${ops}" | tr '\n' ' ' | sed -e 's/^ *//' -e 's/ *$//' -e 's/ /\|/g')
+    echo "ops: ${ops}"
+}
+
+players() {
+    num_players=$(command "list" && sleep 2 && grep "players" "${LOG_FILE}" | grep "online" | tail -1 | sed 's/.*\ \([0-9]\+\).*/\1/')
+}
+
+text() {
+    # Sends the contents to the screen as pure text to a specific player
+    send_server "tellraw $1 {\"text\":\"${*:2}\"}"
+}
+
+read_lines=$(wc -l < "${LOG_FILE}")
+ops
+while true; do
+    lines=$(wc -l < "${LOG_FILE}")
+    
+    # If the log file has been reset
+    if [ "${read_lines}" -gt "${lines}" ]; then
+        ((read_lines = ( ${lines} - 1 ) ))
+    fi
+    
+    while [ "${read_lines}" -lt "${lines}" ]; do
+        ((read_lines += 1))
+        current_line=$(sed "${read_lines}q;d" "${LOG_FILE}")
+        echo "${read_lines}: ${current_line}"
+
+        if echo "${current_line}" | grep -q "\[\([0-9]\{2\}:*\)\{3\}\]\ \[Server\ thread/INFO\]:\ \(\§[0-9a-r]\)\?[0-9a-zA-Z_]\+\(\§[0-9a-r]\)\? "; then
+            player=$(echo "${current_line}" | sed 's|\[\([0-9]\{2\}:*\)\{3\}\]\ \[Server\ thread/INFO\]:\ \(\§[0-9a-r]\)\?\([0-9a-zA-Z_]\+\)\(\§[0-9a-r]\)\? \(.*\)|\3|')
+            message_line=$(echo "${current_line}" | sed 's|\[\([0-9]\{2\}:*\)\{3\}\]\ \[Server\ thread/INFO\]:\ \(\§[0-9a-r]\)\?\([0-9a-zA-Z_]\+\)\(\§[0-9a-r]\)\? \(.*\)|\5|')
+
+            if echo "${message_line}" | grep -q "joined the game"; then
+                echo "$(date +%x-%X) ${player} joined the game" >> "${CHAT_FILE}"
+                players
+                text "${player}" "${LOGIN_MESSAGE}"
+
+                if [ -s "${TIMES_PATH}/${player}.time" ]; then
+                    time=$(cat "${TIMES_PATH}/${player}.time")
+                    text "${player}" "You were last logged in at ${time}"
+                else
+                    text "${player}" "This is your first time on this server!"
+                    command "execute ${player}" "${FIREWORK}"
+                fi
+
+                if [ "${num_players}" -lt 2 ]; then
+                    time=$(cat "${TIMES_PATH}/latest")
+                    text "${player}" "The last time someone was online was ${time}"
+                else
+                    text "${player}" "There are ${num_players} players online right now"
+                fi
+
+                text "${player}" "For more info about the server and its features, say !help in chat"
+            fi
+
+            if echo "${message_line}" | grep -q "left the game"; then
+                echo "$(date +%x-%X) ${player} left the game" >> "${CHAT_FILE}"
+                date +%-a\ %-b\ %-e,\ %-l:%M\ %p\ %Y > "${TIMES_PATH}/${player}.time"
+                echo "${player} at $(cat "${TIMES_PATH}/${player}.time")" > "${TIMES_PATH}/latest"
+            fi
+    
+        elif echo "${current_line}" | grep -E -i -q "(Opped |De-opped )"; then
+            # Someone was opped, reload our list
+            ops
+        fi
+
+        # Quit if not chat
+        if echo "${current_line}" | grep -q "\[\([0-9]\{2\}:*\)\{3\}\]\ \[Server\ thread/INFO\]:\ \(\[Server\]\ \)\?<\(\§[0-9a-r]\)\?[0-9a-zA-Z_]\+\(\§[0-9a-r]\)\?> "; then
+            player=$(echo "${current_line}" | sed 's|\[\([0-9]\{2\}:*\)\{3\}\]\ \[Server\ thread/INFO\]:\ \(\[Server\]\ \)\?<\(\§[0-9a-r]\)\?\([0-9a-zA-Z_]\+\)\(\§[0-9a-r]\)\?> \(.*\)|\4|')
+            chat_line=$(echo "${current_line}" | sed 's|\[\([0-9]\{2\}:*\)\{3\}\]\ \[Server\ thread/INFO\]:\ \(\[Server\]\ \)\?<\(\§[0-9a-r]\)\?\([0-9a-zA-Z_]\+\)\(\§[0-9a-r]\)\?> \(.*\)|\6|')
+
+            echo "$(date +%x-%X) <${player}> ${chat_line}" >> "${CHAT_FILE}"
+        else
+            continue
+        fi
+
+        if [[ $chat_line == *"kappa"* ]]; then
+            text "@a" "░░░░▄▀▀▀▀▀█▀▄▄▄▄░░░░"
+            text "@a" "░░▄▀▒▓▒▓▓▒▓▒▒▓▒▓▀▄░░"
+            text "@a" "▄▀▒▒▓▒▓▒▒▓▒▓▒▓▓▒▒▓█░"
+            text "@a" "█▓▒▓▒▓▒▓▓▓░░░░░░▓▓█░"
+            text "@a" "█▓▓▓▓▓▒▓▒░░░░░░░░▓█░"
+            text "@a" "▓▓▓▓▓▒░░░░░░░░░░░░█░"
+            text "@a" "▓▓▓▓░░░░▄▄▄▄░░░▄█▄▀░"
+            text "@a" "░▀▄▓░░▒▀▓▓▒▒░░█▓▒▒░░"
+            text "@a" "▀▄░░░░░░░░░░░░▀▄▒▒█░"
+            text "@a" "░▀░▀░░░░░▒▒▀▄▄▒▀▒▒█░"
+            text "@a" "░░▀░░░░░░▒▄▄▒▄▄▄▒▒█░"
+            text "@a" "░░░▀▄▄▒▒░░░░▀▀▒▒▄▀░░"
+            text "@a" "░░░░░▀█▄▒▒░░░░▒▄▀░░░"
+            text "@a" "░░░░░░░░▀▀█▄▄▄▄▀░░░░"
+
+        elif [[ $chat_line == "!playerinfo "* ]]; then
+            lookup_player=$(echo "${chat_line}" | sed 's|!playerinfo \([0-9a-zA-Z_]\+\)\ *.*|\1|')
+            if [ -s "${TIMES_PATH}/${lookup_player}.time" ]; then
+                time=$(cat "${TIMES_PATH}/${lookup_player}.time")
+                text "${player}" "${lookup_player} was last logged in at ${time}"
+            else
+                text "${player}" "${lookup_player} was not found. Useage: !playerinfo PlayerName"
+            fi
+
+        elif [[ $chat_line == "!playerlist" ]]; then
+            text "${player}" "Whitelist:"
+            whitelist=$(cat "${server_path}/whitelist.json" | grep '"name": ' | sed 's|    "name": "\([0-9a-zA-Z_]\+\)"|\1,|' | tr '\n' ' ')
+            text "${player}" "${whitelist}"
+
+        elif [[ $chat_line == "!firework" ]]; then
+            text "${player}" "Fine."
+            command "execute ${player}" "${FIREWORK}"
+
+        elif [[ $chat_line == "!maprequest" ]]; then
+            if is_running "updatemap"; then
+                text "${player}" "A map update is already running. Please wait for the current one to finish."
+            else
+                send_server "say Updating online map."
+                screen -dmS "updatemap" ${MINECRAFT_MAP_COMMAND} &
+            fi
+
+        elif [[ $chat_line == "!info" ]]; then
+            text "${player}" "Interactive server: Server commands to provide help and info. Say !help to list commands"
+            for info in "${info_text[@]}"; do
+                text "${player}" "${info}"
+            done
+
+        elif [[ $chat_line == "!help" ]]; then
+            text "${player}" "Server command list:"
+            text "${player}" "!help    view this help menu"
+            text "${player}" "!info    view server info"
+            text "${player}" "!playerinfo PlayerName   display last login time of PlayerName"
+            text "${player}" "!playerlist    display the server whitelist"
+            text "${player}" "!maprequest    update the online map"
+
+        elif [[ $chat_line == "!"* ]]; then
+            command=$(echo "${chat_line}" | sed 's|!\([a-zA-Z0-9_]\+\)\ *.*|\1|')
+            text "${player}" "${command} is not a recognized command. Use !help for a list of commands"
+
+        elif echo "${chat_line}" | grep -i "server" | grep -i "how many" | grep -i -q "players are"; then
+            players
+            send_server "say There are ${num_players} in the game."
+
+        elif echo "${chat_line}" | grep -i "what" | grep -i "you say" | grep -i -q "server"; then
+            send_server "say Unfortunately, not much."
+
+        elif echo "${chat_line}" | grep -E -i "(hello |hi |hey |heyo )" | grep -q "server"; then
+            if echo "${player}" | grep -E -q "(${ops})"; then
+                send_server "say Hello there, Master."
+            else
+                send_server "say Hello there, little one."
+            fi
+    
+        elif echo "${chat_line}" | grep -i "you there" | grep -i -q "server"; then
+            if echo "${player}" | grep -E -q "(${ops})"; then
+                send_server "say I am here, Master."
+            else
+                send_server "say Yes I am, watching your every move."
+            fi
+        fi
+    done
+    sleep .2
+done

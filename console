@@ -1,516 +1,727 @@
 #!/bin/bash
 
-VERSION="5.1"
-
+VERSION="6.0"
 USERNAME=$(whoami)
+CONFIG_FILE="/home/${USERNAME}/.config/minecraft-console.config"
 
-CONFIG_FILE="/home/$USERNAME/.config/java_console.config"
-
-if [ ! -d "/home/$USERNAME/.config" ]; then
-    mkdir "/home/$USERNAME/.config"
-fi
-
-if ! [ -e "${CONFIG_FILE}" ]; then
-    touch "${CONFIG_FILE}"
-    cat > "${CONFIG_FILE}" <<'endofconfig'
-# Default time for stopping and restarting
-TIME=5
-
-# Location of the universal whitelist/oplist. Leave blank if you want to use seperate
-# ones for each server.
-PLAYERLISTPATH="/home/$USERNAME"
-
-# Profiles
-# To make your own, follow the pattern below and add the name to the list
-# Exceptable profiles types are "minecraft" and "starmade"
-# To disable backups, leave the BACKUPPATH blank, eg: =""
-# UPDATEABLE can equal types "vanilla" or "snapshot" for minecraft, and "true" for starmade
-# "false" will disable updating.
-# find_jar is a search that finds the jar file in the server folder, allowing for updates
-# without changing this config file. If there is more than one jar file in the folder
-# the search will fail
-
-# The java binary to use. Set this if the default java ("which java") isn't what you want to
-# run the servers.
-JAVA="java"
-
-PROFILE_LIST=("vanilla" "modded" "beta" "starmade")
-
-# EXAMPLES:
-
-vanilla() {
-    TYPE="minecraft"
-    AUTOSTART="true"
-    SERVERPATH="/home/$USERNAME/${PROFILE}Minecraft"
-    BACKUPPATH="/home/$USERNAME/backup/${PROFILE}Minecraft"
-    WORLD="world"
-    find_jar
-    COMMAND="${JAVA} -Xincgc -Xmx4G -Xms2G -jar $JARNAME nogui"
-    UPDATEABLE="vanilla"
-}
-
-modded() {
-    TYPE="minecraft"
-    AUTOSTART="false"
-    SERVERPATH="/home/$USERNAME/${PROFILE}Minecraft"
-    BACKUPPATH="/home/$USERNAME/backup/${PROFILE}Minecraft"
-    WORLD="world"
-    find_jar
-    COMMAND="${JAVA} -Xincgc -Xmx4G -Xms2G -cp $JARNAME cpw.mods.fml.relauncher.ServerLaunchWrapper nogui"
-    UPDATEABLE="false"
-}
-
-beta() {
-    TYPE="minecraft"
-    AUTOSTART="false"
-    SERVERPATH="/home/$USERNAME/${PROFILE}Minecraft"
-    BACKUPPATH="/home/$USERNAME/backup/${PROFILE}Minecraft"
-    WORLD="world"
-    find_jar
-    COMMAND="${JAVA} -Xincgc -Xmx4G -Xms2G -jar $JARNAME nogui"
-    UPDATEABLE="snapshot"
-}
-
-starmade() {
-    TYPE="starmade"
-    AUTOSTART="false"
-    SERVERPATH="/home/$USERNAME/StarMade"
-    BACKUPPATH="/home/$USERNAME/backup/StarMade"
-    BACKUPS_KEPT="20B"
-    WORLD=""
-    JARNAME="StarMade.jar"
-    COMMAND="${JAVA} -Xmx4G -Xms2G -jar $JARNAME -server"
-    UPDATEABLE="true"
-}
-
-endofconfig
-    echo "No config file was found, one was created."
-    echo "Please run \"$0 config\""
+# Make sure the script is not running as root
+if [ "$UID" == "0" ]; then
+    echo -n "WARNING ! For security reasons: DO NOT RUN THE SERVER AS ROOT "
+    c=1
+    while [ "$c" -le 5 ]; do
+        echo -n "!"
+        sleep 1
+        ((c = c + 1))
+    done
+    echo ""
     exit 1
 fi
 
 # Functions
-all() {
-    case "$1" in
-    start|s)
-        for PROFILE in "${PROFILE_LIST[@]}"; do
-            "$0" "$PROFILE" start auto
-        done
-        exit 0
-    ;;  
-    stop|close|restart|r|status|stat|info|i|backup|b|say|chat|command|c)
-        for PROFILE in "${PROFILE_LIST[@]}"; do
-            "$0" "$PROFILE" "$@"
-        done
-        exit 0
-    ;;
-    update|u|screen|see|console)
-        echo "This fuction is not supported nor encouraged for all profiles at the same time"
-        exit 3      
-    ;;
-    *)
-        help_message
-    ;;
-    esac
+defaults() {
+    # Default server path is in the root
+    server_path="${server_root}/${profile}"
+    # Default java
+    java="java"
+    # Default time
+    default_time=5
 }
 
 find_jar() {
     # Search for the jar file to run if one was not specified in the profile
-    JARNAME=$(find "${SERVERPATH}/" -maxdepth 1 -name "minecraft*.jar" -type f -printf "%f\n")
+    jar_name=$(find "${server_path}/" -maxdepth 1 -name "minecraft*.jar" -type f -printf "%f\n")
 }
 
 send_server() {
     # Sends the contents to the screen and executes it
-    screen -p 0 -S "$PROFILE" -X stuff "$*$(printf \\r)"
-}
-
-help_message() {
-    UDL=$(tput smul)
-    NUDL=$(tput rmul)
-    echo "Java server script version $VERSION by Rycieos"
-    echo "Usage: $0 <profile-name>|all [${UDL}s${NUDL}tart|stop|${UDL}r${NUDL}estart|${UDL}b${NUDL}ackup|say|${UDL}c${NUDL}ommand|${UDL}i${NUDL}nfo|${UDL}u${NUDL}pdate|screen|${UDL}l${NUDL}ist|config]"
-    echo "Profile settings are at ~/.config/java_console.config. Use $0 config to edit"
-    exit 2
+    screen -p 0 -S "${profile}" -X stuff "$*$(printf \\r)"
 }
 
 is_running() {
     # Checks for the screen running the server
-    if ( pgrep -u "$USERNAME" -f "SCREEN -dmS ${PROFILE}" > /dev/null ); then
-        # It's running
-        return 0
+    return $( pgrep -u "${USERNAME}" -f "SCREEN -dmS ${profile}" > /dev/null )
+}
+
+check_config() {
+    # Scrict is if we need the files to exist already or not.
+    if [ -z "${default_time}" ]; then
+        echo "'default_time' is not set: '${default_time}'"
+    elif [ -n "${player_list_path}" ] && [ ! -d "${player_list_path}" ]; then
+        echo "'player_list_path' does not exist: '${player_list_path}'"
+    elif [ "${type}" != "minecraft" ]; then
+        echo "Profile ${profile} has unsupported 'type' of '${type}'"
+    elif [ "${autostart}" != "true" ] && [ "${autostart}" != "false" ]; then
+        echo "Profile ${profile} has unsupported 'autostart' of '${autostart}'"
+    elif [ -z "${server_path}" ]; then
+        echo "Profile ${profile} has blank 'server_path': '${server_path}'"
+    elif [ ! -d "${server_path}" ]; then
+        echo "Profile ${profile} has 'server_path' that does not exist: '${server_path}'"
+    elif [ ! -r "${server_path}" ]; then
+        echo "Profile ${profile} has 'server_path' that is not readable: '${server_path}'"
+    elif [ ! -w "${server_path}" ]; then
+        echo "Profile ${profile} has 'server_path' that is not writeable: '${server_path}'"
+    elif [ -z "${server_command}" ]; then
+        echo "Profile ${profile} has blank 'server_command': '${server_command}'"
+    elif [ "${updateable}" != "vanilla" ] && [ "${updateable}" != "snapshot" ] && [ "${updateable}" != "false" ]; then
+        echo "Profile ${profile} has unsupported 'updateable' of '${updateable}'"
+    
+    elif [ "$1" == "strict" ]; then
+        if [ ! -d "${server_path}/${world}" ]; then
+            echo "Profile ${profile} has 'world' that does not exist: '${world}'"
+            echo "Is it possible that the server is empty and needs to be updated?"
+        elif [ -z "${jar_name}" ]; then
+            echo "Profile ${profile} has blank 'jar_name': '${jar_name}'"
+        elif [ ! -f "${server_path}/${jar_name}" ]; then
+            echo "Profile ${profile} has 'jar_name' that does not exist: '${jar_name}'"
+        elif [ ! -r "${server_path}/${jar_name}" ]; then
+            echo "Profile ${profile} has 'jar_name' that is not readable: '${jar_name}'"
+        elif [ ! -w "${server_path}/${jar_name}" ]; then
+            echo "Profile ${profile} has 'jar_name' that is not writeable: '${jar_name}'"
+        else
+            return 0
+        fi
     else
-        # It's not
+        # All good
+        return 0
+    fi
+    exit 3
+}
+
+start() {
+    if is_running; then
+        echo "The ${profile} server is already running, use restart, try-restart, or stop"
         return 1
+    fi
+    
+    # Check if this profile is allowed to be autorun
+    if [ "$1" == "auto" ] && [ "${autostart}" == "false" ]; then
+        echo "The ${profile} server is not set to be autorun. Server not started"
+        return 0
+    fi
+    
+    cd "${server_path}"
+    if [ "${type}" == "minecraft" ]; then
+        # Copy the server.properties file from the world folder to allow for multiple world configurations
+        if [ -e "${world}"/server.properties ]; then
+            cp -f "${world}"/server.properties server.properties
+        fi
+    fi
+    
+    if [ -d "${player_list_path}" ]; then
+        if [ "${type}" == "minecraft" ]; then
+            ln -f "${player_list_path}"/minecraft.whitelist "${server_path}"/whitelist.json
+            ln -f "${player_list_path}"/minecraft.oplist "${server_path}"/ops.json
+            ln -f "${player_list_path}"/minecraft.banlist "${server_path}"/banned-players.json
+        fi
+    fi
+    
+    if [ "${eula}" == "true" ]; then
+        echo "eula=true" > "${server_path}/eula.txt"
+    fi
+    
+    echo "Starting the ${profile} server..."
+    if [ ! -x "${jar_name}" ]; then
+        echo "${jar_name} is not executable, trying to set it"
+        chmod +x "${jar_name}"
+    fi
+    if [ ! -x "${jar_name}" ]; then
+        echo "${jar_name} is not exectuable, cannot start the server"
+        return 1
+    fi
+    
+    # Launch it
+    if [ "$1" == "debug" ]; then
+        # Launch without screen for easier debugging
+        ${server_command}
+    else
+        screen -dmS "${profile}" ${server_command} &
+        echo "${profile} server launched..."
+        # Make sure it is running
+        sleep 2
+        if is_running; then
+            echo "${profile} server started."
+            # Start the listener if needed
+            if [ "${listener}" == "true" ]; then
+                listener-start
+            fi
+        else
+            echo "${profile} server seemes to have crashed!"
+        fi
     fi
 }
 
-#SCRIPT START
-
-source "$CONFIG_FILE"
-
-# Load the correct configuration
-PROFILE="$1"
-
-if [ "$1" == "list" ] || [ "$1" == "l" ] || [ "$1" == "config" ]; then
-    # Move what was in spot 1 to spot 2 so that it works in the coming case statment. The profile doesn't matter
-    set -- "NULL" "$1"
-elif [ "$PROFILE" == "all" ]; then
-    # Pass it on to the all() function
-    "$@"
-else
-    # Load the profile's settings by calling it as a function
-    $PROFILE || { echo "Profile ${PROFILE} was not found. Run $0 config to add it"; exit 1; }
-fi
-
-
-case "$2" in
-    start|s)
+stop() {
+    if ! is_running; then
+        echo "The ${profile} server is not running."
+        return 0
+    fi
+    
+    echo "Sending stop warnings on the ${profile} server"
+    
+    # Test if time parameter was specified
+    if [ -n "$1" ]; then
+        if [ "$1" -gt 0 ]; then
+            default_time="$1"
+        fi
+    fi
+    
+    if [ "${type}" == "minecraft" ]; then
+        send_server "say SERVER STOPPING/RESTARTING IN ${default_time} SECONDS"
+        sync
+        sleep "${default_time}"
+        send_server "stop"
+    fi
+    
+    echo -n "Stopping the ${profile} server"
+    i=1
+    while [ "$i" -le 20 ]; do
         if is_running; then
-            echo "The $PROFILE server is already running, try restart or stop"
-            exit 1
+            echo -n "."
+            sleep 1
+        else
+            break
+        fi
+        i=$((++i)) 
+    done
+    echo "."
+    if is_running; then
+        echo "Server is not shutting down cleanly."
+        return 1
+    fi
+
+    # Stop the listener if needed
+    if [ "${listener}" == "true" ]; then
+        listener-stop
+    fi
+    
+    echo "Done."
+}
+
+status() {
+    if is_running; then
+        echo "${profile} server is running"
+    else
+        echo "${profile} server is shut down"
+    fi
+}
+
+backup() {
+    hash rsync 2>/dev/null || { echo "I need rsync but it's not installed"; exit 1; }
+    
+    if [ -z "${backup_path}" ]; then
+        echo "Backups are disabled for the ${profile} profile."
+        echo "Update the profile if you want to make backups."
+        return 2
+    elif ! is_running && echo "$1" | grep -Eivq "(force|f|-f|override)"; then
+        echo "The ${profile} server is not running, so no backups need to be made."
+        return 0
+    else
+        echo "Backing up the ${profile} server..."
+    fi
+    
+    if [ ! -d "${backup_path}" ]; then
+        echo "The backup path ${backup_path} for the profile ${profile} does not exist!"
+        echo "Creating it now..."
+        mkdir "${backup_path}"
+    fi 
+    
+    if is_running; then
+        echo "Suspending saves on the ${profile} server..."
+        if [ "${type}" == "minecraft" ]; then
+            send_server "say SERVER BACKUP STARTING"
+            send_server "save-off"
+            send_server "save-all"
+        fi
+        sleep 2
+        sync
+        sleep 1
+    fi
+    
+    echo "Making the backup..."
+    date=$(date "+%Y-%m-%dT%H:%M:%S")
+    
+    if [ -L "${backup_path}/current" ] && [ -e "${backup_path}/current" ]; then
+        echo "Symlink found; making a diff backup"
+        rsync -a --link-dest="${backup_path}/current" "${server_path}/" "${backup_path}/back-${date}"
+        rm "${backup_path}/current"
+    else
+        echo "No symlink found; making a clean backup"
+        rsync -a "${server_path}/" "${backup_path}/back-${date}"
+    fi
+    
+    ln -s "${backup_path}/back-${date}" "${backup_path}/current"
+    
+    echo "Backup finished"
+    
+    if is_running; then
+        echo "Re-enabling saves"
+        if [ "${type}" == "minecraft" ]; then
+            send_server "save-on"
+            send_server "say SERVER BACKUP ENDED"
+        fi
+    fi
+    
+    echo "Done."
+}
+
+say() {
+    if ! is_running; then
+        echo "The ${profile} server is not running."
+        return 2
+    fi
+    if [ "${type}" == "minecraft" ]; then
+        send_server "say $*"
+    fi
+}
+
+command() {
+    if ! is_running; then
+        echo "The ${profile} server is not running."
+        return 2
+    fi
+    send_server "$*"
+}
+
+update() {
+    if [ "${updateable}" == "false" ]; then
+        echo "The ${profile} server is not set as updateable"
+        return 1
+    fi
+    
+    if [ "${type}" == "minecraft" ]; then
+        # Allow for specifiying a specific version
+        if [ -n "$1" ]; then
+            current_version="$1"
+        elif [ "${updateable}" == "vanilla" ]; then
+            # Awkward pieces of code that strip the current Minecraft versions from the version file
+            current_version=$(wget -q -O - https://s3.amazonaws.com/Minecraft.Download/versions/versions.json |
+                                grep "\"release\":" |
+                                sed 's/    "release": "\([0-9a-zA-Z.-]\+\)"/\1/' |
+                                tr -d '[:space:]')
+            echo "The newest stable version is ${current_version}"
+        elif [ "${updateable}" == "snapshot" ]; then
+            current_version=$(wget -q -O - https://s3.amazonaws.com/Minecraft.Download/versions/versions.json |
+                                grep "\"snapshot\":" |
+                                sed 's/    "snapshot": "\([0-9a-zA-Z.-]\+\)",/\1/' |
+                                tr -d '[:space:]')
+            echo "The newest snapshot is ${current_version}"
+        else
+            echo "Unsupported type of Minecraft release. Please fix this profile"
+            return 1
         fi
         
-        # Make sure the script is not running as root
-        if [ "$UID" == "0" ]; then
-            echo "WARNING ! For security reasons: DO NOT RUN THE SERVER AS ROOT"
-            c=1
-            while [ "$c" -le 5 ]; do
-                echo -n "!"
-                sleep 1
-                ((c = c + 1))
+        # Parse the version out of the jar file
+        installed_version=$(echo "${jar_name}" |
+                            sed 's/minecraft_server.\([0-9a-zA-Z.-]\+\).jar/\1/' |
+                            tr -d '[:space:]')
+        if [ -n "${installed_version}" ]; then
+            echo "Your version is ${installed_version}"
+        fi
+        
+        # Check if the current version is outdated
+        if [ "${current_version}" == "${installed_version}" ]; then
+            echo "The ${profile} server is up to date"
+        else
+            if is_running; then
+                echo "The ${profile} server is currently running"
+                echo -n "Would you like to restart, backup, and update the ${profile} server? [y|N]: "
+            else
+                echo -n "Would you like to backup and update the ${profile} server? [y|N]: "
+            fi
+            
+            read -r value
+            while :; do
+                case "${value}" in
+                    y|yes|Y)
+                        if is_running; then
+                            stop || { echo "Server won't shutdown. Aborting."; return 2; }
+                            was_running="true"
+                        fi
+                        cd "${server_path}"
+                        
+                        echo "Backing up..."
+                        backup force || { echo "Backup failed! Quitting..."; return 2; }
+                       
+                        echo "Updating..."
+                        wget "https://s3.amazonaws.com/Minecraft.Download/versions/${current_version}/minecraft_server.${current_version}.jar" ||
+                            {   echo "Download failed, aborting"
+                                if [ "${was_running}" == "true" ]; then
+                                    start || { echo "Server won't start back up!"; return 2; }
+                                fi
+                                return 1; }
+                        chmod +x "minecraft_server.${current_version}.jar"
+                        if [ -f "${jar_name}" ]; then
+                            rm "${jar_name}"
+                        fi
+                        if [ ! -d "${server_path}/${world}" ]; then
+                            mkdir "${server_path}/${world}"
+                        fi
+                        echo "The ${profile} server was updated to version ${current_version}"
+                        
+                        if [ "${was_running}" == "true" ]; then
+                            # We updated, so we need our new jar_file
+                            load_profile strict
+                            start || return 1
+                        fi
+                        return 0
+                    ;;
+                    n|no|N)
+                        echo "Exiting on user command"
+                        return 0
+                    ;;
+                    *)
+                        echo -n "Please enter [y|N]: "
+                        read -r value
+                esac
             done
         fi
-        
-        # Check if this profile is allowed to be autorun
-        if [ "$3" == "auto" ] && [ "$AUTOSTART" == "false" ]; then
-            echo "The $PROFILE server is not set to be autorun. Server not started"
-            exit 0
-        fi
-        
-        cd "${SERVERPATH}" || { echo "The server directory does not exist!"; exit 1; }
-        if [ "${TYPE}" == "minecraft" ]; then
-            # Copy the server.properties file from the world folder to allow for multiple world configurations
-            if [ -e "$WORLD"/server.properties ]; then
-                cp -f "$WORLD"/server.properties server.properties
-            fi
-        fi
-        
-        if [ -d "$PLAYERLISTPATH" ]; then
-            if [ "$TYPE" == "minecraft" ]; then
-                ln -f "$PLAYERLISTPATH"/minecraft.whitelist "$SERVERPATH"/whitelist.json
-                ln -f "$PLAYERLISTPATH"/minecraft.oplist "$SERVERPATH"/ops.json
-                ln -f "$PLAYERLISTPATH"/minecraft.banlist "$SERVERPATH"/banned-players.json
-            elif [ "$TYPE" == "starmade" ]; then
-                ln -f "$PLAYERLISTPATH"/starmade.whitelist "$SERVERPATH"/whitelist.txt
-                ln -f "$PLAYERLISTPATH"/starmade.banlist "$SERVERPATH"/blacklist.txt
-            fi
-        fi
-        
-        echo "Starting the $PROFILE server..."
-        if [ -e "$JARNAME" ]; then
-            if [ ! -x "$JARNAME" ]; then
-                echo "$JARNAME is not executable, trying to set it"
-                chmod u+x "$JARNAME"
-            fi
-            if [ -x "$JARNAME" ]; then  
-                # Launch it
+    fi
+}
 
-                if [ "$3" == "debug" ]; then
-                    # Launch without screen for easier debugging
-                    $COMMAND
-                else
-                    screen -dmS "$PROFILE" $COMMAND &
-                    echo "$PROFILE server launched..."
-                    # Make sure it is running
-                    sleep 2
-                    if is_running; then
-                        echo "$PROFILE server started."
+list() {
+    echo "Profile list:"
+    for profile in "${profile_list[@]}"; do
+        echo -n "${profile} "
+    done
+    echo ""
+}
+
+see() {
+    if ! is_running; then
+        echo "The ${profile} server is not running."
+        return 1
+    fi
+    
+    cat > /tmp/screenconfig <<EOF
+startup_message off
+screen -t 'console' sh -c "tail -n 1000 --follow=name ${server_path}/logs/latest.log"
+screen -t 'shell' bash -c "$0 shell ${profile}"
+split
+focus down
+select 'shell'
+resize 3
+focus up
+select 'console'
+focus down
+EOF
+    screen -S "${profile}-console" -c /tmp/screenconfig
+    rm /tmp/screenconfig
+    screen -S "${profile}-console" -X quit >& /dev/null
+}
+
+shell() {
+    mode="command"
+    while :; do
+        if [ "${mode}" == "command" ]; then
+            echo -n "c "
+        else
+            echo -n "s "
+        fi
+        echo -n "> "
+        read -r value
+        set -- ${value}
+        case "$1" in
+            exit|:q|quit)
+                screen -S "${profile}-console" -X quit >& /dev/null
+                return 0
+            ;;
+            nick)
+                shift 1
+                nick="$*"
+            ;;
+            help)
+                echo "c|s|exit|nick|help"
+            ;;
+            c|command)
+                shift 1
+                # Only send something if line is not blank
+                if [ -n "$*" ]; then
+                    send_server "$*"
+                fi
+                mode="command"
+            ;;
+            s|say|chat)
+                shift 1
+                mode="say"
+            ;&
+            *)
+                # Only send something if line is not blank
+                if [ -n "$*" ]; then
+                    if [ "${mode}" == "command" ]; then
+                        send_server "$*"
                     else
-                        echo "$PROFILE server seemes to have crashed!"
+                        if [ -n "${nick}" ]; then
+                            send_server "say <${nick}> $*"
+                        else
+                            send_server "say $*"
+                        fi
                     fi
                 fi
-            else
-                echo "$JARNAME is not exectuable, cannot start the server"
-            fi
-        else
-            echo "Could not find jar file $JARNAME, aborting"
-            echo "If this is the first time running the server, run $0 $PROFILE update"
-            exit 5
-        fi
-    ;;
-    stop|close)
-        if is_running; then
-            echo "Sending stop warnings on the $PROFILE server"
-            
-            # Test if time parameter was specified
-            if [ -n "$3" ]; then
-                if [ "$3" -gt 0 ]; then
-                    TIME="$3"
-                fi
-            fi
-            
-            if [ "$TYPE" == "minecraft" ]; then
-                send_server "say SERVER STOPPING/RESTARTING IN $TIME SECONDS"
-                sync
-                sleep "$TIME"
-                send_server "stop"
-            elif [ "$TYPE" == "starmade" ]; then
-                send_server "/chat SERVER STOPPING/RESTARTING IN $TIME SECONDS"
-                send_server "/start_countdown $TIME"
-                send_server "/shutdown $TIME"
-                sync
-                sleep "$TIME"
-            fi
-            
-            echo -n "Stopping the $PROFILE server"
-            i=1
-            while [ "$i" -le 20 ]; do
-                if is_running; then
-                    echo -n "."
-                    sleep 1
-                else
-                    break
-                fi
-                i=$((++i)) 
+        esac
+    done
+}
+
+listener-start() {
+    screen -dmS "${profile}-listener" $0 listener "${profile}" &
+}
+
+listener-stop() {
+    screen -S "${profile}-listener" -X quit >& /dev/null
+}
+
+new() {
+    # Add new profile to config
+    if [ ! "$1" ] || [ "$1" == "minecraft" ] || [ "$1" == "vanilla" ]; then
+        cat >> "${CONFIG_FILE}" <<'EOF'
+vanilla() {
+    type="minecraft"
+    autostart="true"
+    backup_path="/${server_root}/backup/${profile}Minecraft"
+    world="world"
+    find_jar
+    server_command="${java} -Xmx4G -Xms2G -jar ${jar_name} nogui"
+    updateable="vanilla"
+}
+
+EOF
+        echo "New vanilla minecraft profile added."
+    elif [ "$1" == "modded" ]; then
+        cat >> "${CONFIG_FILE}" <<'EOF'
+modded() {
+    type="minecraft"
+    autostart="false"
+    backup_path="/${server_root}/backup/${profile}Minecraft"
+    world="world"
+    jar_name="forge-1.7.10-10.13.4.1448-1.7.10-universal.jar"
+    server_command="${java} -Xmx4G -Xms2G -cp ${jar_name} cpw.mods.fml.relauncher.ServerLaunchWrapper nogui"
+    updateable="false"
+}
+
+EOF
+        echo "New modded minecraft profile added."
+    else
+        echo "Unknown profile type ${1}."
+        return 1
+    fi
+    echo "Add the new profile to the profile list to activate it."
+}
+
+config() {
+    # Make sure GNU screen is installed
+    hash screen 2>/dev/null || { echo >&2 "I need screen but it's not installed"; exit 1; }
+    
+    if [ ! -d "/home/${USERNAME}/.config" ]; then
+        mkdir "/home/${USERNAME}/.config"
+    fi
+    if ! [ -e "${CONFIG_FILE}" ]; then
+        touch "${CONFIG_FILE}"
+        cat > "${CONFIG_FILE}" <<'EOF'
+# Time for stopping and restarting. Set this if you want a different wait.
+#default_time=5
+
+# Root of all Minecraft servers. This does not have to be specified if you want
+# to specify each server_path by itself. If you do specify this, you can leave
+# each server_path blank, and it will default to server_root/profile_name.
+server_root="/var/minecraft"
+
+# Location of the universal whitelist/oplist. Leave blank if you want to use
+# seperate ones for each server.
+#player_list_path="${server_root}"
+
+# This is agreeing to the Mojang EULA, not mine. See their EULA here:
+# https://account.mojang.com/documents/minecraft_eula
+# Changing this to true will make all servers EULA be true.
+#eula="true"
+
+# The java binary to use. Set this if the default java ("which java") isn't
+# what you want to run the servers.
+#java="java"
+
+# Profiles
+# To make your own, run "console new <type>"
+# Exceptable profiles types are "minecraft", for now.
+# To disable backups, leave the 'backup_path' blank, eg: backup_path=""
+# 'updateable' can equal types "vanilla" or "snapshot" for minecraft.
+# "false" will disable updating.
+# find_jar is a search that finds the minecraft jar file in the server folder, allowing for updates
+# without changing this config file. If there is more than one minecraft jar file in the folder
+# the search will fail
+
+# The list of servers that the "all" commands will use
+profile_list=()
+
+EOF
+        echo "Base config created. Run \"$0 new <type>\" to add your first profile."
+        return 0
+    fi
+    
+    if [ -z "$EDITOR" ]; then
+        vi "${CONFIG_FILE}" || return $?
+    else
+        "${EDITOR}" "${CONFIG_FILE}" || return $?
+    fi
+    
+    # Load the configuration to check it
+    echo "Checking new config..."
+    source "${CONFIG_FILE}"
+    
+    for profile in "${profile_list[@]}"; do
+        defaults
+        ${profile} >& /dev/null || { echo "Profile ${profile} was not found, but it was in the profile list."; return 1; }
+        check_config
+    done
+    echo "Config looks good."
+}
+
+help_text() {
+    # Help text
+    echo "Java server script version $VERSION by Rycieos"
+    echo "Usage: $0 [start|stop|restart|try-restart|backup|say|command|status|update|see|listener-start|listener-stop|listener-restart|list|config|new] <profile-name>|all "
+    echo "Profile settings are at ~/.config/java_console.config. Use $0 config to edit"
+    exit 1
+}
+
+load_profile() {
+    if [ -z "${profile}" ]; then
+        echo "No Profile specified"
+        help_text
+    fi
+    # Load the profile's settings by calling it as a function
+    defaults
+    ${profile} >& /dev/null || { echo "Profile ${profile} was not found. Run \"$0 new <type>\" to add it"; exit 1; }
+    check_config "$1"
+}
+
+# SCRIPT START
+
+SWITCH="$1"
+
+if [ ! -e "${CONFIG_FILE}" ] && [ "$1" != "config" ]; then
+    echo "No config file was found!"
+    echo "Please run \"$0 config\""
+    exit 1
+elif [ "${SWITCH}" != "config" ] && [ "${SWITCH}" != "new" ] && [ "${SWITCH}" != "add" ]; then
+    # Load the configuration only if we aren't trying to change it
+    source "${CONFIG_FILE}"
+fi
+
+if [ "$2" == "all" ]; then
+    case "${SWITCH}" in
+        start|s)
+            for profile in "${profile_list[@]}"; do
+                load_profile strict
+                start auto
             done
-            echo "."
-            if is_running; then
-                echo "Server is not shutting down cleanly."
-                exit 1
-            else
-                echo "Done."
-                exit 0
-            fi
-        else
-            echo "The $PROFILE server is not running."
-            exit 1
-        fi
-    ;;
-    restart|r)
-        "$0" "$PROFILE" stop "$3" && "$0" "$PROFILE" start || exit 1
-    ;;
-    status|stat|info|i)
-        if is_running; then
-            echo "$PROFILE server is running"
-        else
-            echo "$PROFILE server is shut down"
-        fi
-        exit 0
-    ;;
-    backup|b)
-        command -v rsync >/dev/null 2>&1 || { echo "I need rsync but it's not installed"; exit 1; }
-        
-        if [ -z "$BACKUPPATH" ]; then
-            echo "Backups are disabled for the $PROFILE profile."
-            echo "Update the profile if you want to make backups."
-            exit 2
-        elif ! is_running && echo "$3" | grep -Eivq "(force|f|-f|override)"; then
-            echo "The $PROFILE server is not running, so no backups need to be made."
             exit 0
-        else
-            echo "Backing up the $PROFILE server..."
-        fi
-        
-        if [ ! -d "$BACKUPPATH" ]; then
-            echo "The backup path $BACKUPPATH for the profile $PROFILE does not exist!"
-            echo "Creating it now..."
-            mkdir "$BACKUPPATH"
-        fi 
+        ;;
+        stop|restart|backup|say|command)
+            # Shift to get rid of the <command> all. The remainder gets run
+            shift 2
+            for profile in "${profile_list[@]}"; do
+                load_profile strict
+                "${SWITCH}" "$@"
+            done
+            exit 0
+        ;;
+        status|update)
+            # Shift to get rid of the <command> all. The remainder gets run
+            shift 2
+            for profile in "${profile_list[@]}"; do
+                load_profile
+                "${SWITCH}" "$@"
+            done
+            exit 0
+        ;;
+        see|console)
+            echo "$1 is not supported for all profiles at the same time."
+            exit 3
+        ;;
+        config|new|add)
+            echo "all is implied for ${1}."
+            exit 3
+        ;;
+    esac
+fi
 
+profile="$2"
+
+case "${SWITCH}" in
+    start)
+        load_profile strict
+        start "$3"
+    ;;
+    stop)
+        load_profile strict
+        stop "$3"
+    ;;
+    restart)
+        load_profile strict
+        stop "$3"
+        start "$3"
+    ;;
+    try-restart)
+        load_profile strict
         if is_running; then
-            echo "Suspending saves on the $PROFILE server..."
-            if [ "$TYPE" == "minecraft" ]; then
-                send_server "say SERVER BACKUP STARTING"
-                send_server "save-off"
-                send_server "save-all"
-            elif [ "$TYPE" == "starmade" ]; then
-                send_server "/chat SERVER BACKUP STARTING"
-                send_server "/force_save"
-            fi
-            sleep 2
-            sync
-            sleep 1
+            stop "$3" && start "$3"
         fi
-        
-        echo "Making the backup..."
-            DATE=$(date "+%Y-%m-%dT%H:%M:%S")
-
-            if [ -L "${BACKUPPATH}/current" ] && [ -e "${BACKUPPATH}/current" ]; then
-                echo "Symlink found; making a diff backup"
-                rsync -a --link-dest="${BACKUPPATH}/current" "${SERVERPATH}/" "${BACKUPPATH}/back-${DATE}"
-                rm "${BACKUPPATH}/current"
-            else
-                echo "No symlink found; making a clean backup"
-                rsync -a "${SERVERPATH}/" "${BACKUPPATH}/back-${DATE}"
-            fi
-
-            ln -s "${BACKUPPATH}/back-${DATE}" "${BACKUPPATH}/current"
-
-        echo "Backup finished"
-        
-        if is_running; then
-            echo "Re-enabling saves"
-            if [ "$TYPE" == "minecraft" ]; then
-                send_server "save-on"
-                send_server "say SERVER BACKUP ENDED"
-            elif [ "$TYPE" == "starmade" ]; then
-                send_server "/chat SERVER BACKUP ENDED"
-            fi
-        fi
-        
-        echo "Done."
-        exit 0
     ;;
-    say|chat)
-        if ! is_running; then
-            echo "The $PROFILE server is not running."
-            exit 2
-        fi
-        # Shift to get rid of the profile and the say or chat. The remainder gets sent straight to the server
+    status)
+        load_profile
+        status
+    ;;
+    backup)
+        load_profile strict
+        backup "$3"
+    ;;
+    say)
+        load_profile strict
         shift 2
-        if [ "$TYPE" == "minecraft" ]; then
-            send_server "say $*"
-        elif [ "$TYPE" == "starmade" ]; then
-            send_server "/chat $*"
-        fi
-        exit 0
+        say "$*"
     ;;
-    command|c)
-        if ! is_running; then
-            echo "The $PROFILE server is not running."
-            exit 2
-        fi
-        # Shift to get rid of the profile and the command or c. The remainder gets sent straight to the server
+    command)
+        load_profile strict
         shift 2
-        send_server "$*"
-        exit 0
+        command "$*"
     ;;
-    update|u)
-        if [ "$UPDATEABLE" == "false" ]; then
-            echo "The $PROFILE server is not set as updateable"
-            exit 1
-        fi
-        
-        if [ "$TYPE" == "minecraft" ]; then
-            # Allow for specifiying a specific version
-            if [ -n "$3" ]; then
-                CURRENT_VERSION="$3"
-            elif [ "$UPDATEABLE" == "vanilla" ]; then
-                # Awkward pieces of code that strip the current Minecraft versions from the version file
-                CURRENT_VERSION=$(wget -q -O - https://s3.amazonaws.com/Minecraft.Download/versions/versions.json |
-                                    grep "\"release\":" |
-                                    sed 's/    "release": "\([0-9a-zA-Z.-]\+\)"/\1/' |
-                                    tr -d '[:space:]')
-                echo "The newest stable version is ${CURRENT_VERSION}"
-            elif [ "$UPDATEABLE" == "snapshot" ]; then
-                CURRENT_VERSION=$(wget -q -O - https://s3.amazonaws.com/Minecraft.Download/versions/versions.json |
-                                    grep "\"snapshot\":" |
-                                    sed 's/    "snapshot": "\([0-9a-zA-Z.-]\+\)",/\1/' |
-                                    tr -d '[:space:]')
-                echo "The newest snapshot is ${CURRENT_VERSION}"
-            else
-                echo "Unsupported type of Minecraft release. Please fix this profile"
-                exit 1
-            fi
-            
-            # Parse the version out of the jar file
-            INSTALLED_VERSION=$(echo "$JARNAME" |
-                                sed 's/minecraft_server.\([0-9a-zA-Z.-][0-9a-zA-Z.-]*\).jar/\1/' |
-                                tr -d '[:space:]')
-            echo "Your version is $INSTALLED_VERSION"
-            
-            # Check if the current version is outdated
-            if [ "${CURRENT_VERSION}" == "${INSTALLED_VERSION}" ]; then
-                echo "The $PROFILE server is up to date"
-            else
-                if is_running; then
-                    echo "The $PROFILE server is currently running"
-                    echo -n "Would you like to restart, backup, and update the $PROFILE server? [y|N]: "
-                else
-                    echo -n "Would you like to backup and update the $PROFILE server? [y|N]: "
-                fi
-                
-                read -r VALUE
-                while :; do
-                    case "$VALUE" in
-                        y|yes|Y)
-                            if is_running; then
-                                "$0" "$PROFILE" stop
-                                WASRUNNING="true"
-                            fi
-                            cd "$SERVERPATH" || { echo "Server directory does not exist!"; exit 1; }
-                            
-                            echo "Backing up..."                            
-                            "$0" "$PROFILE" backup force || { echo "Backup failed! Quitting..."; exit 1; }
-                            
-                            echo "Updating..."
-                            wget "https://s3.amazonaws.com/Minecraft.Download/versions/${CURRENT_VERSION}/minecraft_server.${CURRENT_VERSION}.jar" || 
-                                {   echo "Download failed, aborting"
-                                    if [ "$WASRUNNING" == "true" ]; then
-                                        "$0" "$PROFILE" start
-                                    fi
-                                    exit 1; }
-                            chmod u+x "minecraft_server.${CURRENT_VERSION}.jar"
-                            rm "$JARNAME"
-                            echo "The $PROFILE server was updated to version $CURRENT_VERSION"
-                            
-                            if [ "$WASRUNNING" == "true" ]; then
-                                "$0" "$PROFILE" start || exit 1
-                            fi
-                            
-                            exit 0
-                        ;;
-                        n|no|N)
-                            echo "Exiting on user command"
-                            exit 0
-                        ;;
-                        *)
-                            echo -n "Please enter [y|N]: "
-                            read -r VALUE
-                    esac
-                done
-            fi
-        
-        elif [ "$TYPE" == "starmade" ]; then
-            cd /home/"$USERNAME" || { echo "Your home directory does not exist!"; exit 1; }
-            # Check to see if the update jar is there. I was having it disapear randomly on me...
-            if [ ! -e "StarMade/StarMade-Starter.jar" ]; then
-                echo "No StarMade-Starter.jar was found; trying to download."
-                cd "$SERVERPATH" || { echo "Server directory does not exist!"; exit 1; }
-                wget http://files.star-made.org/StarMade-Starter.jar || exit 1
-                cd /home/"$USERNAME" || { echo "Your home directory does not exist!"; exit 1; }
-            fi
-            # Run the updater. It takes care of checking for updates and asking if you want to update
-            java -jar StarMade/StarMade-Starter.jar -nogui || exit 1
-        fi
-        
-        exit 0
+    update)
+        load_profile
+        update "$3"
     ;;
-    list|l)
-        echo "Profile list:"
-        for PROFILE in "${PROFILE_LIST[@]}"; do
-            echo -n "${PROFILE} "
-        done
-        echo ""
-        exit 0
+    see|console)
+        load_profile strict
+        see
     ;;
-    screen|see|console)
-        # Simply calls up the screen for the server. Can easily be done manually
-        screen -r "$PROFILE" || exit 1
-        exit 0
+    shell)
+        load_profile
+        shell
+    ;;
+    listener)
+        load_profile
+        . minecraft-listener console
+    ;;
+    listener-start)
+        load_profile
+        listener-start
+    ;;
+    listener-stop)
+        listener-stop
+    ;;
+    listener-restart)
+        load_profile
+        listener-stop
+        listener-start
+    ;;
+    # Profile agnostic
+    list)
+        list
+    ;;
+    new)
+        new "$2"
     ;;
     config)
-        # Make sure GNU screen is installed
-        command -v screen >/dev/null 2>&1 || { echo "I need screen but it's not installed"; exit 1; }
-        
-        if [ -z "$EDITOR" ]; then
-            vi "$CONFIG_FILE" || exit 1
-        else
-            "$EDITOR" "$CONFIG_FILE" || exit 1
-        fi
-        exit 0
+        config
     ;;
     *)
-        help_message
+        help_text
 esac
-exit 0
+exit $?
