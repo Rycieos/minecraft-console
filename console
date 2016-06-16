@@ -2,7 +2,7 @@
 
 VERSION="6.0"
 USERNAME=$(whoami)
-CONFIG_FILE="/home/${USERNAME}/.config/java_console.config"
+CONFIG_FILE="/home/${USERNAME}/.config/minecraft-console.config"
 
 # Make sure the script is not running as root
 if [ "$UID" == "0" ]; then
