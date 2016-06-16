@@ -382,7 +382,7 @@ see() {
         echo "The ${profile} server is not running."
         return 1
     fi
-
+    
     cat > /tmp/screenconfig <<EOF
 startup_message off
 screen -t 'console' sh -c "tail -n 1000 --follow=name ${server_path}/logs/latest.log"
@@ -459,8 +459,7 @@ new() {
 vanilla() {
     type="minecraft"
     autostart="true"
-    server_path="/home/${USERNAME}/${profile}Minecraft"
-    backup_path="/home/${USERNAME}/backup/${profile}Minecraft"
+    backup_path="/${server_root}/backup/${profile}Minecraft"
     world="world"
     find_jar
     server_command="${java} -Xmx4G -Xms2G -jar ${jar_name} nogui"
@@ -474,8 +473,7 @@ EOF
 modded() {
     type="minecraft"
     autostart="false"
-    server_path="/home/${USERNAME}/${profile}Minecraft"
-    backup_path="/home/${USERNAME}/backup/${profile}Minecraft"
+    backup_path="/${server_root}/backup/${profile}Minecraft"
     world="world"
     jar_name="forge-1.7.10-10.13.4.1448-1.7.10-universal.jar"
     server_command="${java} -Xmx4G -Xms2G -cp ${jar_name} cpw.mods.fml.relauncher.ServerLaunchWrapper nogui"
@@ -501,21 +499,26 @@ config() {
     if ! [ -e "${CONFIG_FILE}" ]; then
         touch "${CONFIG_FILE}"
         cat > "${CONFIG_FILE}" <<'EOF'
-# Default time for stopping and restarting
-default_time=5
+# Time for stopping and restarting. Set this if you want a different wait.
+#default_time=5
 
-# Location of the universal whitelist/oplist. Leave blank if you want to use seperate
-# ones for each server.
-player_list_path="/home/${USERNAME}"
+# Root of all Minecraft servers. This does not have to be specified if you want
+# to specify each server_path by itself. If you do specify this, you can leave
+# each server_path blank, and it will default to server_root/profile_name.
+server_root="/var/minecraft"
+
+# Location of the universal whitelist/oplist. Leave blank if you want to use
+# seperate ones for each server.
+#player_list_path="${server_root}"
 
 # This is agreeing to the Mojang EULA, not mine. See their EULA here:
 # https://account.mojang.com/documents/minecraft_eula
 # Changing this to true will make all servers EULA be true.
-eula="false"
+#eula="true"
 
-# The java binary to use. Set this if the default java ("which java") isn't what you want to
-# run the servers.
-java="java"
+# The java binary to use. Set this if the default java ("which java") isn't
+# what you want to run the servers.
+#java="java"
 
 # Profiles
 # To make your own, run "console new <type>"
