@@ -404,9 +404,9 @@ focus up
 select 'console'
 focus down
 EOF
-    screen -S "${profile}-console" -c /tmp/screenconfig
+    screen -S "console-${profile}" -c /tmp/screenconfig
     rm /tmp/screenconfig
-    screen -S "${profile}-console" -X quit >& /dev/null
+    screen -S "console-${profile}" -X quit >& /dev/null
 }
 
 shell() {
@@ -462,11 +462,11 @@ shell() {
 }
 
 listener-start() {
-    screen -dmS "${profile}-listener" $0 listener "${profile}" &
+    screen -dmS "listener-${profile}" $0 listener "${profile}" &
 }
 
 listener-stop() {
-    screen -S "${profile}-listener" -X quit >& /dev/null
+    screen -S "listener-${profile}" -X quit >& /dev/null
 }
 
 new() {
@@ -704,6 +704,7 @@ case "${SWITCH}" in
         listener-start
     ;;
     listener-stop)
+        load_profile
         listener-stop
     ;;
     listener-restart)
