@@ -422,7 +422,7 @@ shell() {
         set -- ${value}
         case "$1" in
             exit|:q|quit)
-                screen -S "${profile}-console" -X quit >& /dev/null
+                screen -S "console-${profile}" -X quit >& /dev/null
                 return 0
             ;;
             nick)
