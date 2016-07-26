@@ -1,8 +1,7 @@
 #!/bin/bash
 
 VERSION="6.0"
-USERNAME=$(whoami)
-CONFIG_FILE="/home/${USERNAME}/.config/minecraft-console.config"
+CONFIG_FILE="${HOME}/.config/minecraft-console.config"
 
 # Make sure the script is not running as root
 if [ "$UID" == "0" ]; then
@@ -39,7 +38,7 @@ send_server() {
 
 is_running() {
     # Checks for the screen running the server
-    return $( pgrep -u "${USERNAME}" -f "SCREEN -dmS ${profile}" > /dev/null )
+    return $( pgrep -u $(whoami) -f "SCREEN -dmS ${profile}" > /dev/null )
 }
 
 check_config() {
@@ -206,7 +205,7 @@ status() {
 }
 
 backup() {
-    hash rsync 2>/dev/null || { echo "I need rsync but it's not installed"; exit 1; }
+    hash rsync 2>/dev/null || { echo "I need rsync but it's not installed"; return 1; }
 
     if [ -z "${backup_path}" ]; then
         echo "Backups are disabled for the ${profile} profile."
@@ -222,7 +221,7 @@ backup() {
     if [ ! -d "${backup_path}" ]; then
         echo "The backup path ${backup_path} for the profile ${profile} does not exist!"
         echo "Creating it now..."
-        mkdir "${backup_path}"
+        mkdir "${backup_path}" || return 3
     fi
 
     if is_running; then
@@ -269,7 +268,7 @@ restore() {
 
     if [ -z "${in_time}" ] || ! date  -d "${in_time}" +%s >/dev/null 2>&1; then
         echo "Incorrect date format. Format: 'YYYY-MM-DD HH:MM:SS'"
-        exit 1
+        return 1
     fi
 
     in_utime=$(date -d "${in_time}" +%s)
@@ -293,7 +292,7 @@ restore() {
 
     if [ -z "${out_dir}" ]; then
         echo "No backup found older than input date"
-        exit 2
+        return 2
     fi
 
     echo "Date to restore: $(date -d @"${out_utime}")"
@@ -564,10 +563,10 @@ EOF
 
 config() {
     # Make sure GNU screen is installed
-    hash screen 2>/dev/null || { echo >&2 "I need screen but it's not installed"; exit 1; }
+    hash screen 2>/dev/null || { echo >&2 "I need screen but it's not installed"; return 1; }
 
-    if [ ! -d "/home/${USERNAME}/.config" ]; then
-        mkdir "/home/${USERNAME}/.config"
+    if [ ! -d "${HOME}/.config" ]; then
+        mkdir "${HOME}/.config"
     fi
     if ! [ -e "${CONFIG_FILE}" ]; then
         touch "${CONFIG_FILE}"
@@ -632,9 +631,10 @@ EOF
 help_text() {
     # Help text
     echo "Java server script version $VERSION by Rycieos"
-    echo "Usage: $0 [start|stop|restart|try-restart|backup|say|command|status|update|see|listener-start|listener-stop|listener-restart|list|config|new] <profile-name>|all "
-    echo "Profile settings are at ~/.config/java_console.config. Use $0 config to edit"
-    exit 1
+    echo "Usage: $0 [start|stop|restart|try-restart|backup|restore|say|command|status|update|"
+    echo "    see|listener-start|listener-stop|listener-restart|list|config|new] <profile-name>|all "
+    echo "Profile settings are at ~/.config/minecraft-console.config. Use $0 config to edit"
+    return 1
 }
 
 load_profile() {
