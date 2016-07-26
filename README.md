@@ -27,7 +27,10 @@ Restarts the specified profile, if it is running. If it not, it will do nothing.
 Prints the status of the specified profile, if it is running or not.
 
 ### backup
-Uses `rsync` to backup the server. Handles the server running while backing up. It using the diff backup feature of `rsync` to save space. Best used in a cron job or similar.
+Uses `rsync` to backup the server. Handles the server running while backing up. It uses the diff backup feature of `rsync` to save space. Best used in a cron job or similar.
+
+### restore
+Uses `rsync` to restore a previous backup. It takes a datetime in the "YYYY-MM-DD HH:MM:SS" format to search from. It will select the closest backup older than that date to restore. Note that it will completely erase the current server state, so if you are not sure that you want to lose it, make a backup first.
 
 ### say
 Sends a message to the server that is printed to all online uses. This is designed to be used in automatic scripts. To talk to users directly, it would be better to use `see`.

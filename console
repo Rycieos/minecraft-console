@@ -264,6 +264,62 @@ backup() {
     echo "Done."
 }
 
+restore() {
+    in_time="$1"
+
+    if [ -z "${in_time}" ] || ! date  -d "${in_time}" +%s >/dev/null 2>&1; then
+        echo "Incorrect date format. Format: 'YYYY-MM-DD HH:MM:SS'"
+        exit 1
+    fi
+
+    in_utime=$(date -d "${in_time}" +%s)
+    out_utime=0
+
+    # Have valid date, find closest date backwards
+    cd "${backup_path}"
+    dirs="back*"
+
+    for d in $dirs; do
+        backup_time=$(echo "${d}" | sed 's/^back-//; s/T/ /')
+        backup_utime=$(date -d "${backup_time}" +%s)
+
+        if [ "${backup_utime}" -le "${in_utime}" ]; then
+            if [ "${backup_utime}" -ge "${out_utime}" ]; then
+                out_utime="${backup_utime}"
+                out_dir="${d}"
+            fi
+        fi
+    done
+
+    if [ -z "${out_dir}" ]; then
+        echo "No backup found older than input date"
+        exit 2
+    fi
+
+    echo "Date to restore: $(date -d @"${out_utime}")"
+    echo "Directory to remove: ${server_path}"
+    echo "Are you sure you want to want to overwrite the server? [y|N]:"
+
+    read -r value
+    while :; do
+        case "${value}" in
+            y|yes|Y)
+                # Restore from valid date
+                # This does a complete overwrite without removing first
+                rsync -a --delete "${backup_path}/${out_dir}/" "${server_path}"
+                return 0
+            ;;
+            n|no|N)
+                echo "Exiting on user command"
+                return 0
+            ;;
+            *)
+                echo -n "Please enter [y|N]: "
+                read -r value
+        esac
+    done
+}
+
 say() {
     if ! is_running; then
         echo "The ${profile} server is not running."
@@ -632,7 +688,7 @@ if [ "$2" == "all" ]; then
             done
             exit 0
         ;;
-        see|console)
+        see|console|restore)
             echo "$1 is not supported for all profiles at the same time."
             exit 3
         ;;
@@ -672,6 +728,10 @@ case "${SWITCH}" in
     backup)
         load_profile strict
         backup "$3"
+    ;;
+    restore)
+        load_profile
+        restore "$3"
     ;;
     say)
         load_profile strict
