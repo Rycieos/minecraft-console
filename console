@@ -531,7 +531,7 @@ new() {
 vanilla() {
     type="minecraft"
     autostart="true"
-    backup_path="/${server_root}/backup/${profile}Minecraft"
+    backup_path="/${server_root}/backup/${profile}"
     world="world"
     find_jar
     server_command="${java} -Xmx4G -Xms2G -jar ${jar_name} nogui"
@@ -545,7 +545,7 @@ EOF
 modded() {
     type="minecraft"
     autostart="false"
-    backup_path="/${server_root}/backup/${profile}Minecraft"
+    backup_path="/${server_root}/backup/${profile}"
     world="world"
     jar_name="forge-1.7.10-10.13.4.1448-1.7.10-universal.jar"
     server_command="${java} -Xmx4G -Xms2G -cp ${jar_name} cpw.mods.fml.relauncher.ServerLaunchWrapper nogui"
