@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="6.0"
+VERSION="6.1"
 CONFIG_FILE="${HOME}/.config/minecraft-console.config"
 
 # Make sure the script is not running as root
@@ -24,11 +24,6 @@ defaults() {
     java="java"
     # Default time
     default_time=5
-}
-
-find_jar() {
-    # Search for the jar file to run if one was not specified in the profile
-    jar_name=$(find "${server_path}/" -maxdepth 1 -name "minecraft*.jar" -type f -printf "%f\n")
 }
 
 send_server() {
@@ -533,7 +528,7 @@ vanilla() {
     autostart="true"
     backup_path="/${server_root}/backup/${profile}"
     world="world"
-    find_jar
+    jar_name="minecraft_server.*.jar"
     server_command="${java} -Xmx4G -Xms2G -jar ${jar_name} nogui"
     updateable="vanilla"
 }
@@ -547,8 +542,8 @@ modded() {
     autostart="false"
     backup_path="/${server_root}/backup/${profile}"
     world="world"
-    jar_name="forge-1.7.10-10.13.4.1448-1.7.10-universal.jar"
-    server_command="${java} -Xmx4G -Xms2G -cp ${jar_name} cpw.mods.fml.relauncher.ServerLaunchWrapper nogui"
+    jar_name="forge-*-universal.jar"
+    server_command="${java} -Xmx4G -Xms2G -jar ${jar_name} nogui"
     updateable="false"
 }
 
@@ -645,6 +640,16 @@ load_profile() {
     # Load the profile's settings by calling it as a function
     defaults
     ${profile} >& /dev/null || { echo "Profile ${profile} was not found. Run \"$0 new <type>\" to add it"; exit 1; }
+
+    # Search for the jar file to run if a wildcard was specified in the profile
+    if [[ "${jar_name}" =~ \* ]]; then
+        jar_name=$(find "${server_path}/" -maxdepth 1 -name "${jar_name}" -type f -printf "%f\n")
+        if [[ "${server_path}/${jar_name}" =~ [[:space:]] ]]; then
+            echo "Profile ${profile} has multiple jars matching its jar_name: '${jar_name}'"
+            exit 5
+        fi
+    fi
+
     check_config "$1"
 }
 

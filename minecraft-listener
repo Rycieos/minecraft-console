@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="4.0"
+VERSION="4.1"
 
 if [ "$1" != "console" ]; then
     echo "Needs to be called from console script."
@@ -18,8 +18,7 @@ LOG_FILE="${server_path}/logs/latest.log"
 # Won't work on 1.7.X, but it won't do any harm either
 FIREWORK="~ ~ ~ summon FireworksRocketEntity ~ ~ ~ {LifeTime:20,FireworksItem:{id:fireworks,Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:0,Trail:1,Colors:[2723327,13565739],FadeColors:[13344511]}]}}}}"
 CHAT_FILE="${server_path}/logs/chat.log"
-MINECRAFT_MAP_COMMAND="/home/mark/bin/minecraftmap request"
-LOGIN_MESSAGE="Welcome to Rycieos' jaguar Minecraft server!"
+MINECRAFT_MAP_COMMAND="~/bin/minecraftmap request"
 TIMES_PATH="${server_path}/times"
 
 if [ ! -d "${TIMES_PATH}" ]; then
@@ -45,12 +44,12 @@ read_lines=$(wc -l < "${LOG_FILE}")
 ops
 while true; do
     lines=$(wc -l < "${LOG_FILE}")
-    
+
     # If the log file has been reset
     if [ "${read_lines}" -gt "${lines}" ]; then
         ((read_lines = ( ${lines} - 1 ) ))
     fi
-    
+
     while [ "${read_lines}" -lt "${lines}" ]; do
         ((read_lines += 1))
         current_line=$(sed "${read_lines}q;d" "${LOG_FILE}")
@@ -63,7 +62,9 @@ while true; do
             if echo "${message_line}" | grep -q "joined the game"; then
                 echo "$(date +%x-%X) ${player} joined the game" >> "${CHAT_FILE}"
                 players
-                text "${player}" "${LOGIN_MESSAGE}"
+                if [ -n "${login_message}" ]; then
+                    text "${player}" "${login_message}"
+                fi
 
                 if [ -s "${TIMES_PATH}/${player}.time" ]; then
                     time=$(cat "${TIMES_PATH}/${player}.time")
@@ -88,7 +89,7 @@ while true; do
                 date +%-a\ %-b\ %-e,\ %-l:%M\ %p\ %Y > "${TIMES_PATH}/${player}.time"
                 echo "${player} at $(cat "${TIMES_PATH}/${player}.time")" > "${TIMES_PATH}/latest"
             fi
-    
+
         elif echo "${current_line}" | grep -E -i -q "(Opped |De-opped )"; then
             # Someone was opped, reload our list
             ops
@@ -148,9 +149,11 @@ while true; do
 
         elif [[ $chat_line == "!info" ]]; then
             text "${player}" "Interactive server: Server commands to provide help and info. Say !help to list commands"
-            for info in "${info_text[@]}"; do
-                text "${player}" "${info}"
-            done
+            if [ -n "${info_text}" ]; then
+                for info in "${info_text[@]}"; do
+                    text "${player}" "${info}"
+                done
+            fi
 
         elif [[ $chat_line == "!help" ]]; then
             text "${player}" "Server command list:"
@@ -177,7 +180,7 @@ while true; do
             else
                 send_server "say Hello there, little one."
             fi
-    
+
         elif echo "${chat_line}" | grep -i "you there" | grep -i -q "server"; then
             if echo "${player}" | grep -E -q "(${ops})"; then
                 send_server "say I am here, Master."
