@@ -64,7 +64,14 @@ check_config() {
             echo "Profile ${profile} has 'world' that does not exist: '${world}'"
             echo "Is it possible that the server is empty and needs to be updated?"
         elif [ -z "${jar_name}" ]; then
-            echo "Profile ${profile} has blank 'jar_name': '${jar_name}'"
+            if [ -n "${jar_search}" ]; then
+                echo "Profile ${profile} has no jar file matching its jar_name: '${jar_search}'"
+            else
+                echo "Profile ${profile} has blank 'jar_name': '${jar_name}'"
+            fi
+        elif [[ "${jar_name}" =~ [[:space:]] ]]; then
+            echo "Profile ${profile} has multiple files matching its jar_name: '${jar_search}'"
+            echo "This could also be because of a space in the filename (y u do dis)"
         elif [ ! -f "${server_path}/${jar_name}" ]; then
             echo "Profile ${profile} has 'jar_name' that does not exist: '${jar_name}'"
         elif [ ! -r "${server_path}/${jar_name}" ]; then
@@ -593,9 +600,9 @@ server_root="/var/minecraft"
 # To disable backups, leave the 'backup_path' blank, eg: backup_path=""
 # 'updateable' can equal types "vanilla" or "snapshot" for minecraft.
 # "false" will disable updating.
-# find_jar is a search that finds the minecraft jar file in the server folder, allowing for updates
-# without changing this config file. If there is more than one minecraft jar file in the folder
-# the search will fail
+# 'jar_name' can include * wildcards for searching for a jar file, allowing for
+# updates without changing this config file. If there is more than one
+# minecraft jar file in the folder the search will fail
 
 # The list of servers that the "all" commands will use
 profile_list=()
@@ -643,11 +650,8 @@ load_profile() {
 
     # Search for the jar file to run if a wildcard was specified in the profile
     if [[ "${jar_name}" =~ \* ]]; then
+        jar_search="${jar_name}"
         jar_name=$(find "${server_path}/" -maxdepth 1 -name "${jar_name}" -type f -printf "%f\n")
-        if [[ "${server_path}/${jar_name}" =~ [[:space:]] ]]; then
-            echo "Profile ${profile} has multiple jars matching its jar_name: '${jar_name}'"
-            exit 5
-        fi
     fi
 
     check_config "$1"

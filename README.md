@@ -79,7 +79,7 @@ Displays a quick help text.
 General config options (all are optional besides profile_list):
 * `default_time`      the default time that stop will wait before closing the server
 * `server_root`       the default root path where the servers are stored.
-* `player_list_path`  the path where the minecraft.* files are stored for sharing with every server. If not specified, each server will use their own lists.
+* `player_list_path`  the path where the minecraft files are stored for sharing with every server. If not specified, each server will use their own lists.
 * `eula`              if true, console will set each server's eula to true to save time.
 * `java`              the java command to use to launch the servers. Useful if you have a specific version of java for Minecraft.
 * `profile_list`      the list of profiles used when `all` is specified instead of of profile name. If a profile is not in this list, it will work normally, but it will not be part of `all` nor scanned for config errors.
@@ -89,11 +89,12 @@ Profile specific:
 * `autostart`         if the server should be started when `console start all` is run. This allows profiles to be configured without needing to run automaticlly.
 * `server_path`       the location of the server directory. Where the server files are saved. If not specified, will default to `server_root/profile_name`.
 * `backup_path`       the location of the backup directory. If not specified, backups will be disabled for that profile.
-* `world`             the name of the world directory. This allows multiple worlds (maps) to be used per profile. Put a different server.properties file in each world directory, then change the `world` option to select the different world to use.
-* `jar_name`          the jar file to run for the profile. If the profile is of type vanilla or snapshot, you can specify the function `find_jar` instead to use the only jar file in the directory. This allows for updating without changing the config.
+* `world`             the name of the world directory. This allows multiple worlds (maps) to be used per profile. Put a different server.properties file in each world directory, then change this `world` option to select the different world to use.
+* `jar_name`          the jar file to run for the profile. It accepts * wildcards for searching for a jar file. This allows for updating without changing the config.
 * `server_command`    the command to run when starting the server. Probably want to have `${java}` at the beginning and `${jar_name}` after the -jar flag.
 * `updateable`        the type of server if updating is wanted, false otherwise. This is used to discover what version to update the profile.
 * `listener`          if the listener for the profile should be started when the server is started. Defaults to false.
+* `login_message`     the message that the listener will print to a player when they login to the server. Defaults to empty.
 * `info_text`         the array of strings that the listener will print to a player when they say `!info` in game. Defaults to empty.
 
 
