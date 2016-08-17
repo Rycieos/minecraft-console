@@ -1,7 +1,5 @@
 #!/bin/bash
 
-VERSION="4.1"
-
 if [ "$1" != "console" ]; then
     echo "Needs to be called from console script."
     echo "eg: console listener vanilla"
@@ -18,7 +16,7 @@ LOG_FILE="${server_path}/logs/latest.log"
 # Won't work on 1.7.X, but it won't do any harm either
 FIREWORK="~ ~ ~ summon FireworksRocketEntity ~ ~ ~ {LifeTime:20,FireworksItem:{id:fireworks,Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:0,Trail:1,Colors:[2723327,13565739],FadeColors:[13344511]}]}}}}"
 CHAT_FILE="${server_path}/logs/chat.log"
-MINECRAFT_MAP_COMMAND="~/bin/minecraftmap request"
+MINECRAFT_MAP_COMMAND="${HOME}/bin/minecraftmap request"
 TIMES_PATH="${server_path}/times"
 
 if [ ! -d "${TIMES_PATH}" ]; then
@@ -47,7 +45,7 @@ while true; do
 
     # If the log file has been reset
     if [ "${read_lines}" -gt "${lines}" ]; then
-        ((read_lines = ( ${lines} - 1 ) ))
+        read_lines=$((lines - 1))
     fi
 
     while [ "${read_lines}" -lt "${lines}" ]; do
@@ -132,7 +130,7 @@ while true; do
 
         elif [[ $chat_line == "!playerlist" ]]; then
             text "${player}" "Whitelist:"
-            whitelist=$(cat "${server_path}/whitelist.json" | grep '"name": ' | sed 's|    "name": "\([0-9a-zA-Z_]\+\)"|\1,|' | tr '\n' ' ')
+            whitelist=$(grep '"name": ' "${server_path}/whitelist.json" | sed 's|.*"name": "\([0-9a-zA-Z_]*\)".*|\1,|' | tr '\n' ' ')
             text "${player}" "${whitelist}"
 
         elif [[ $chat_line == "!firework" ]]; then

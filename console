@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="6.1"
+VERSION="1.6.1"
 CONFIG_FILE="${HOME}/.config/minecraft-console.config"
 
 # Make sure the script is not running as root
@@ -33,6 +33,7 @@ send_server() {
 
 is_running() {
     # Checks for the screen running the server
+    # shellcheck disable=2046
     return $(pgrep -u "$(whoami)" -f "SCREEN -dmS ${profile}" > /dev/null)
 }
 
@@ -137,6 +138,8 @@ start() {
         # Launch without screen for easier debugging
         ${server_command}
     else
+        # TODO: make server_command a function
+        # shellcheck disable=2086
         screen -dmS "${profile}" ${server_command} &
         echo "${profile} server launched..."
         # Make sure it is running
@@ -379,6 +382,7 @@ update() {
         fi
 
         # Parse the version out of the jar file
+        # shellcheck disable=2001
         installed_version=$(\
             echo "${jar_name}" |
             sed 's/minecraft[_-]server\.\([0-9a-zA-Z.-]*\)\.jar/\1/')
@@ -489,6 +493,7 @@ shell() {
         fi
         echo -n "> "
         read -r value
+        # shellcheck disable=2086
         set -- ${value}
         case "$1" in
             exit|:q|quit)
@@ -633,6 +638,7 @@ EOF
 
     # Load the configuration to check it
     echo "Checking new config..."
+    # shellcheck source=minecraft-console.config
     source "${CONFIG_FILE}"
 
     for profile in "${profile_list[@]}"; do
@@ -664,7 +670,7 @@ load_profile() {
         { echo "Profile ${profile} was not found. Run \"$0 new <type>\" to add it"; exit 1; }
 
     # Search for the jar file to run if a wildcard was specified in the profile
-    if [[ "${jar_name}" =~ \* ]]; then
+    if [[ "${jar_name}" == *\** ]]; then
         jar_search="${jar_name}"
         jar_name=$(find "${server_path}/" -maxdepth 1 -name "${jar_name}" \
             -type f -printf "%f\n" 2>/dev/null)
@@ -683,6 +689,7 @@ if [ ! -e "${CONFIG_FILE}" ] && [ "$1" != "config" ]; then
     exit 1
 elif [ "${SWITCH}" != "config" ] && [ "${SWITCH}" != "new" ] && [ "${SWITCH}" != "add" ]; then
     # Load the configuration only if we aren't trying to change it
+    # shellcheck source=minecraft-console.config
     source "${CONFIG_FILE}"
 fi
 
