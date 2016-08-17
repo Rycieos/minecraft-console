@@ -33,7 +33,7 @@ send_server() {
 
 is_running() {
     # Checks for the screen running the server
-    return $( pgrep -u $(whoami) -f "SCREEN -dmS ${profile}" > /dev/null )
+    return $(pgrep -u "$(whoami)" -f "SCREEN -dmS ${profile}" > /dev/null)
 }
 
 check_config() {
@@ -101,7 +101,8 @@ start() {
         return 0
     fi
 
-    cd "${server_path}"
+    cd "${server_path}" ||
+        { echo "Cannot enter server location!"; return 5; }
     if [ "${type}" == "minecraft" ]; then
         # Copy the server.properties file to allow for multiple world configurations
         if [ -e "${world}"/server.properties ]; then
@@ -269,6 +270,15 @@ backup() {
 restore() {
     in_time="$1"
 
+    if [ -z "${backup_path}" ]; then
+        echo "Backups are disabled for the ${profile} profile."
+        echo "Update the profile if you want to use backups."
+        return 3
+    elif [ ! -d "${backup_path}" ]; then
+        echo "Profile ${profile} has a 'backup_path' that does not exist: '${backup_path}'"
+        return 4
+    fi
+
     if [ -z "${in_time}" ] || ! date  -d "${in_time}" +%s >/dev/null 2>&1; then
         echo "Incorrect date format. Format: 'YYYY-MM-DD HH:MM:SS'"
         return 1
@@ -278,7 +288,8 @@ restore() {
     out_utime=0
 
     # Have valid date, find closest date backwards
-    cd "${backup_path}"
+    cd "${backup_path}" ||
+        { echo "Cannot enter backup location!"; return 5; }
     dirs="back*"
 
     for d in $dirs; do
@@ -394,7 +405,8 @@ update() {
                             stop || { echo "Server won't shutdown. Aborting."; return 2; }
                             was_running="true"
                         fi
-                        cd "${server_path}"
+                        cd "${server_path}" ||
+                            { echo "Cannot enter server location!"; return 5; }
 
                         echo "Backing up..."
                         backup force || { echo "Backup failed! Quitting..."; return 2; }
@@ -520,7 +532,7 @@ shell() {
 }
 
 listener-start() {
-    screen -dmS "listener-${profile}" $0 listener "${profile}" &
+    screen -dmS "listener-${profile}" "$0" listener "${profile}" &
 }
 
 listener-stop() {
