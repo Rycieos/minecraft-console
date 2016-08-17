@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="1.6.1"
+VERSION="1.6.2"
 CONFIG_FILE="${HOME}/.config/minecraft-console.config"
 
 # Make sure the script is not running as root
@@ -13,7 +13,7 @@ if [ "$UID" == "0" ]; then
         ((c = c + 1))
     done
     echo ""
-    exit 1
+    exit 21
 fi
 
 # Functions
@@ -93,7 +93,7 @@ check_config() {
 start() {
     if is_running; then
         echo "The ${profile} server is already running, use restart, try-restart, or stop"
-        return 1
+        return 7
     fi
 
     # Check if this profile is allowed to be autorun
@@ -103,7 +103,7 @@ start() {
     fi
 
     cd "${server_path}" ||
-        { echo "Cannot enter server location!"; return 5; }
+        { echo "Cannot enter server location!"; return 12; }
     if [ "${type}" == "minecraft" ]; then
         # Copy the server.properties file to allow for multiple world configurations
         if [ -e "${world}"/server.properties ]; then
@@ -130,7 +130,7 @@ start() {
     fi
     if [ ! -x "${jar_name}" ]; then
         echo "${jar_name} is not exectuable, cannot start the server"
-        return 1
+        return 13
     fi
 
     # Launch it
@@ -159,7 +159,7 @@ start() {
 stop() {
     if ! is_running; then
         echo "The ${profile} server is not running."
-        return 0
+        return 8
     fi
 
     echo "Sending stop warnings on the ${profile} server"
@@ -192,7 +192,7 @@ stop() {
     echo "."
     if is_running; then
         echo "Server is not shutting down cleanly."
-        return 1
+        return 10
     fi
 
     # Stop the listener if needed
@@ -212,12 +212,12 @@ status() {
 }
 
 backup() {
-    hash rsync 2>/dev/null || { echo "I need rsync but it's not installed"; return 1; }
+    hash rsync 2>/dev/null || { echo "I need rsync but it's not installed"; return 22; }
 
     if [ -z "${backup_path}" ]; then
         echo "Backups are disabled for the ${profile} profile."
         echo "Update the profile if you want to make backups."
-        return 2
+        return 15
     elif ! is_running && echo "$1" | grep -Eivq "(force|f|-f|override)"; then
         echo "The ${profile} server is not running, so no backups need to be made."
         return 0
@@ -228,7 +228,7 @@ backup() {
     if [ ! -d "${backup_path}" ]; then
         echo "The backup path ${backup_path} for the profile ${profile} does not exist!"
         echo "Creating it now..."
-        mkdir "${backup_path}" || return 3
+        mkdir "${backup_path}" || return 11
     fi
 
     if is_running; then
@@ -276,15 +276,15 @@ restore() {
     if [ -z "${backup_path}" ]; then
         echo "Backups are disabled for the ${profile} profile."
         echo "Update the profile if you want to use backups."
-        return 3
+        return 15
     elif [ ! -d "${backup_path}" ]; then
         echo "Profile ${profile} has a 'backup_path' that does not exist: '${backup_path}'"
-        return 4
+        return 3
     fi
 
     if [ -z "${in_time}" ] || ! date  -d "${in_time}" +%s >/dev/null 2>&1; then
         echo "Incorrect date format. Format: 'YYYY-MM-DD HH:MM:SS'"
-        return 1
+        return 2
     fi
 
     in_utime=$(date -d "${in_time}" +%s)
@@ -292,7 +292,7 @@ restore() {
 
     # Have valid date, find closest date backwards
     cd "${backup_path}" ||
-        { echo "Cannot enter backup location!"; return 5; }
+        { echo "Cannot enter backup location!"; return 12; }
     dirs="back*"
 
     for d in $dirs; do
@@ -309,7 +309,7 @@ restore() {
 
     if [ -z "${out_dir}" ]; then
         echo "No backup found older than input date"
-        return 2
+        return 17
     fi
 
     echo "Date to restore: $(date -d @"${out_utime}")"
@@ -322,7 +322,7 @@ restore() {
             y|yes|Y)
                 # Restore from valid date
                 # This does a complete overwrite without removing first
-                rsync -a --delete "${backup_path}/${out_dir}/" "${server_path}"
+                rsync -a --delete "${backup_path}/${out_dir}/" "${server_path}" || return 16
                 return 0
             ;;
             n|no|N)
@@ -339,7 +339,7 @@ restore() {
 say() {
     if ! is_running; then
         echo "The ${profile} server is not running."
-        return 2
+        return 8
     fi
     if [ "${type}" == "minecraft" ]; then
         send_server "say $*"
@@ -349,7 +349,7 @@ say() {
 command() {
     if ! is_running; then
         echo "The ${profile} server is not running."
-        return 2
+        return 8
     fi
     send_server "$*"
 }
@@ -357,7 +357,7 @@ command() {
 update() {
     if [ "${updateable}" == "false" ]; then
         echo "The ${profile} server is not set as updateable"
-        return 1
+        return 19
     fi
 
     if [ "${type}" == "minecraft" ]; then
@@ -378,7 +378,7 @@ update() {
             echo "The newest snapshot is ${current_version}"
         else
             echo "Unsupported type of Minecraft release. Please fix this profile"
-            return 1
+            return 3
         fi
 
         # Parse the version out of the jar file
@@ -406,23 +406,23 @@ update() {
                 case "${value}" in
                     y|yes|Y)
                         if is_running; then
-                            stop || { echo "Server won't shutdown. Aborting."; return 2; }
+                            stop || { echo "Server won't shutdown. Aborting."; return 10; }
                             was_running="true"
                         fi
                         cd "${server_path}" ||
-                            { echo "Cannot enter server location!"; return 5; }
+                            { echo "Cannot enter server location!"; return 12; }
 
                         echo "Backing up..."
-                        backup force || { echo "Backup failed! Quitting..."; return 2; }
+                        backup force || { echo "Backup failed! Quitting..."; return 14; }
 
                         echo "Updating..."
                         download="https://s3.amazonaws.com/Minecraft.Download/versions"
                         wget "${download}/${current_version}/minecraft_server.${current_version}.jar" ||
                             {   echo "Download failed, aborting"
                                 if [ "${was_running}" == "true" ]; then
-                                    start || { echo "Server won't start back up!"; return 2; }
+                                    start || { echo "Server won't start back up!"; return 9; }
                                 fi
-                                return 1; }
+                                return 18; }
                         chmod +x "minecraft_server.${current_version}.jar"
                         if [ -f "${jar_name}" ]; then
                             rm "${jar_name}"
@@ -435,7 +435,7 @@ update() {
                         if [ "${was_running}" == "true" ]; then
                             # We updated, so we need our new jar_file
                             load_profile strict
-                            start || return 1
+                            start || return 9
                         fi
                         return 0
                     ;;
@@ -463,7 +463,7 @@ list() {
 see() {
     if ! is_running; then
         echo "The ${profile} server is not running."
-        return 1
+        return 8
     fi
 
     cat > /tmp/screenconfig <<EOF
@@ -576,14 +576,14 @@ EOF
         echo "New modded minecraft profile added."
     else
         echo "Unknown profile type ${1}."
-        return 1
+        return 2
     fi
     echo "Add the new profile to the profile list to activate it."
 }
 
 config() {
     # Make sure GNU screen is installed
-    hash screen 2>/dev/null || { echo >&2 "I need screen but it's not installed"; return 1; }
+    hash screen 2>/dev/null || { echo >&2 "I need screen but it's not installed"; return 22; }
 
     if [ ! -d "${HOME}/.config" ]; then
         mkdir "${HOME}/.config"
@@ -631,9 +631,9 @@ EOF
     fi
 
     if [ -z "$EDITOR" ]; then
-        vi "${CONFIG_FILE}" || return $?
+        vi "${CONFIG_FILE}" || return 20
     else
-        "${EDITOR}" "${CONFIG_FILE}" || return $?
+        "${EDITOR}" "${CONFIG_FILE}" || return 20
     fi
 
     # Load the configuration to check it
@@ -644,7 +644,7 @@ EOF
     for profile in "${profile_list[@]}"; do
         defaults
         ${profile} >& /dev/null ||
-            { echo "Profile ${profile} was not found, but it was in the profile list."; return 1; }
+            { echo "Profile ${profile} was not found, but it was in the profile list."; return 4; }
         check_config
     done
     echo "Config looks good."
@@ -667,7 +667,7 @@ load_profile() {
     # Load the profile's settings by calling it as a function
     defaults
     ${profile} >& /dev/null ||
-        { echo "Profile ${profile} was not found. Run \"$0 new <type>\" to add it"; exit 1; }
+        { echo "Profile ${profile} was not found. Run \"$0 new <type>\" to add it"; exit 4; }
 
     # Search for the jar file to run if a wildcard was specified in the profile
     if [[ "${jar_name}" == *\** ]]; then
@@ -686,7 +686,7 @@ SWITCH="$1"
 if [ ! -e "${CONFIG_FILE}" ] && [ "$1" != "config" ]; then
     echo "No config file was found!"
     echo "Please run \"$0 config\""
-    exit 1
+    exit 5
 elif [ "${SWITCH}" != "config" ] && [ "${SWITCH}" != "new" ] && [ "${SWITCH}" != "add" ]; then
     # Load the configuration only if we aren't trying to change it
     # shellcheck source=minecraft-console.config
@@ -722,11 +722,11 @@ if [ "$2" == "all" ]; then
         ;;
         see|console|restore)
             echo "$1 is not supported for all profiles at the same time."
-            exit 3
+            exit 6
         ;;
         config|new|add)
             echo "all is implied for ${1}."
-            exit 3
+            exit 6
         ;;
     esac
 fi

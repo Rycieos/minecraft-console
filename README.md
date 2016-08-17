@@ -97,6 +97,29 @@ Profile specific:
 * `login_message`     the message that the listener will print to a player when they login to the server. Defaults to empty.
 * `info_text`         the array of strings that the listener will print to a player when they say `!info` in game. Defaults to empty.
 
+## Error Codes
+* 1:    No parameters specified
+* 2:    Incorrect parameters specified
+* 3:    Missing/incorrect profile config option
+* 4:    Missing profile
+* 5:    Missing config file
+* 6:    Invalid command with profile "all"
+* 7:    Profile already running
+* 8:    Profile not running
+* 9:    Profile failed to start
+* 10:   Profile failed to shutdown
+* 11:   Directory failed to be created
+* 12:   Directory failed to be opened
+* 13:   Jar failed to be set executable
+* 14:   Backup failed
+* 15:   Backups disabled for profile
+* 16:   Restore failed
+* 17:   No older backup found to restore
+* 18:   Update failed
+* 19:   Profile not set to be updated
+* 20:   External program error
+* 21:   Script run as root
+* 22:   Missing dependency
 
 ## Listener
 
