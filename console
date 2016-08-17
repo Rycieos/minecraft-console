@@ -56,7 +56,8 @@ check_config() {
         echo "Profile ${profile} has 'server_path' that is not writeable: '${server_path}'"
     elif [ -z "${server_command}" ]; then
         echo "Profile ${profile} has blank 'server_command': '${server_command}'"
-    elif [ "${updateable}" != "vanilla" ] && [ "${updateable}" != "snapshot" ] && [ "${updateable}" != "false" ]; then
+    elif [ "${updateable}" != "vanilla" ] && [ "${updateable}" != "snapshot" ] && \
+        [ "${updateable}" != "false" ]; then
         echo "Profile ${profile} has unsupported 'updateable' of '${updateable}'"
 
     elif [ "$1" == "strict" ]; then
@@ -102,7 +103,7 @@ start() {
 
     cd "${server_path}"
     if [ "${type}" == "minecraft" ]; then
-        # Copy the server.properties file from the world folder to allow for multiple world configurations
+        # Copy the server.properties file to allow for multiple world configurations
         if [ -e "${world}"/server.properties ]; then
             cp -f "${world}"/server.properties server.properties
         fi
@@ -346,21 +347,20 @@ update() {
     fi
 
     if [ "${type}" == "minecraft" ]; then
+        version_file="https://launchermeta.mojang.com/mc/game/version_manifest.json"
         # Allow for specifiying a specific version
         if [ -n "$1" ]; then
             current_version="$1"
         elif [ "${updateable}" == "vanilla" ]; then
             # Awkward pieces of code that strip the current Minecraft versions from the version file
-            current_version=$(wget -q -O - https://s3.amazonaws.com/Minecraft.Download/versions/versions.json |
-                                grep "\"release\":" |
-                                sed 's/    "release": "\([0-9a-zA-Z.-]\+\)"/\1/' |
-                                tr -d '[:space:]')
+            current_version=$(\
+                wget -q -O - "${version_file}" |
+                sed 's/.*"release":"\([0-9a-zA-Z.-]*\)".*/\1/')
             echo "The newest stable version is ${current_version}"
         elif [ "${updateable}" == "snapshot" ]; then
-            current_version=$(wget -q -O - https://s3.amazonaws.com/Minecraft.Download/versions/versions.json |
-                                grep "\"snapshot\":" |
-                                sed 's/    "snapshot": "\([0-9a-zA-Z.-]\+\)",/\1/' |
-                                tr -d '[:space:]')
+            current_version=$(\
+                wget -q -O - "${version_file}" |
+                sed 's/.*"snapshot":"\([0-9a-zA-Z.-]*\)".*/\1/')
             echo "The newest snapshot is ${current_version}"
         else
             echo "Unsupported type of Minecraft release. Please fix this profile"
@@ -368,9 +368,9 @@ update() {
         fi
 
         # Parse the version out of the jar file
-        installed_version=$(echo "${jar_name}" |
-                            sed 's/minecraft_server.\([0-9a-zA-Z.-]\+\).jar/\1/' |
-                            tr -d '[:space:]')
+        installed_version=$(\
+            echo "${jar_name}" |
+            sed 's/minecraft[_-]server\.\([0-9a-zA-Z.-]*\)\.jar/\1/')
         if [ -n "${installed_version}" ]; then
             echo "Your version is ${installed_version}"
         fi
@@ -400,7 +400,8 @@ update() {
                         backup force || { echo "Backup failed! Quitting..."; return 2; }
 
                         echo "Updating..."
-                        wget "https://s3.amazonaws.com/Minecraft.Download/versions/${current_version}/minecraft_server.${current_version}.jar" ||
+                        download="https://s3.amazonaws.com/Minecraft.Download/versions"
+                        wget "${download}/${current_version}/minecraft_server.${current_version}.jar" ||
                             {   echo "Download failed, aborting"
                                 if [ "${was_running}" == "true" ]; then
                                     start || { echo "Server won't start back up!"; return 2; }
@@ -624,7 +625,8 @@ EOF
 
     for profile in "${profile_list[@]}"; do
         defaults
-        ${profile} >& /dev/null || { echo "Profile ${profile} was not found, but it was in the profile list."; return 1; }
+        ${profile} >& /dev/null ||
+            { echo "Profile ${profile} was not found, but it was in the profile list."; return 1; }
         check_config
     done
     echo "Config looks good."
@@ -634,7 +636,7 @@ help_text() {
     # Help text
     echo "Java server script version $VERSION by Rycieos"
     echo "Usage: $0 [start|stop|restart|try-restart|backup|restore|say|command|status|update|"
-    echo "    see|listener-start|listener-stop|listener-restart|list|config|new] <profile-name>|all "
+    echo "    see|listener-start|listener-stop|listener-restart|list|config|new] <profile-name>|all"
     echo "Profile settings are at ~/.config/minecraft-console.config. Use $0 config to edit"
     return 1
 }
@@ -646,12 +648,14 @@ load_profile() {
     fi
     # Load the profile's settings by calling it as a function
     defaults
-    ${profile} >& /dev/null || { echo "Profile ${profile} was not found. Run \"$0 new <type>\" to add it"; exit 1; }
+    ${profile} >& /dev/null ||
+        { echo "Profile ${profile} was not found. Run \"$0 new <type>\" to add it"; exit 1; }
 
     # Search for the jar file to run if a wildcard was specified in the profile
     if [[ "${jar_name}" =~ \* ]]; then
         jar_search="${jar_name}"
-        jar_name=$(find "${server_path}/" -maxdepth 1 -name "${jar_name}" -type f -printf "%f\n")
+        jar_name=$(find "${server_path}/" -maxdepth 1 -name "${jar_name}" \
+            -type f -printf "%f\n" 2>/dev/null)
     fi
 
     check_config "$1"
