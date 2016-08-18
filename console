@@ -120,7 +120,7 @@ start() {
     fi
 
     if [ "${eula}" == "true" ]; then
-        echo "eula=true" > "${server_path}/eula.txt"
+        echo "eula=true" > "eula.txt"
     fi
 
     echo "Starting the ${profile} server..."
@@ -148,7 +148,7 @@ start() {
             echo "${profile} server started."
             # Start the listener if needed
             if [ "${listener}" == "true" ]; then
-                listener-start
+                listenerstart
             fi
         else
             echo "${profile} server seemes to have crashed!"
@@ -197,7 +197,7 @@ stop() {
 
     # Stop the listener if needed
     if [ "${listener}" == "true" ]; then
-        listener-stop
+        listenerstop
     fi
 
     echo "Done."
@@ -536,11 +536,11 @@ shell() {
     done
 }
 
-listener-start() {
+listenerstart() {
     screen -dmS "listener-${profile}" "$0" listener "${profile}" &
 }
 
-listener-stop() {
+listenerstop() {
     screen -S "listener-${profile}" -X quit >& /dev/null
 }
 
@@ -683,6 +683,10 @@ load_profile() {
 
 SWITCH="$1"
 
+if [ "${SWITCH}" == "lib" ]; then
+    return 0
+fi
+
 if [ ! -e "${CONFIG_FILE}" ] && [ "$1" != "config" ]; then
     echo "No config file was found!"
     echo "Please run \"$0 config\""
@@ -793,16 +797,16 @@ case "${SWITCH}" in
     ;;
     listener-start)
         load_profile
-        listener-start
+        listenerstart
     ;;
     listener-stop)
         load_profile
-        listener-stop
+        listenerstop
     ;;
     listener-restart)
         load_profile
-        listener-stop
-        listener-start
+        listenerstop
+        listenerstart
     ;;
     # Profile agnostic
     list)

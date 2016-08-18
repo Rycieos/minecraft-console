@@ -1,9 +1,11 @@
 # minecraft-console
 Bash scripts for managing Minecraft servers.
 
+[![Build Status](https://travis-ci.org/Rycieos/minecraft-console.svg?branch=master)](https://travis-ci.org/Rycieos/minecraft-console)
+
 ## Console
 
-`console` manages the server's startup, shutdown, backups, and much more. It works as a manager, leaving the server running as the daemon. It is designed to copy the syntax of systemd.
+`console` manages the server's startup, shutdown, backups, and much more. It works as a manager, leaving the server running as the daemon. It is designed to copy the syntax of init systems like init.d or systemd.
 
 Everything is configured by running `console config`. It supports multiple servers, multiple worlds (maps) per server, and infinite backups.
 
@@ -39,10 +41,10 @@ Sends a message to the server that is printed to all online uses. This is design
 Sends a command to the server. This is designed to be used in automatic scripts. To use many commands or see their output, it would be better to use `see`.
 
 ### update
-Updates the version of Minecraft installed in the specified profile. It downloads the jar files from Mojang using their interface to figure out what is the latest version. Optionlly, a version can be specified after the profile to update to that specific version. Will correctly handle running servers and also backup the server before updating.
+Updates the version of Minecraft installed in the specified profile. It downloads the jar files from Mojang using their interface to figure out what is the latest version. Optionally, a version can be specified after the profile to update to that specific version. Will correctly handle running servers and also backup the server before updating.
 
 ### see
-Creates a setup of screen to help chat and commands to the server. The server can be connected to directly with `screen -r profile-name`, but this can cause problems if there are automatic scripts running using the `say` or `command` commands to control the server, since they use same text buffer. Using the `see` command removes the problem, as well as adding helpful shortcuts to controlling the server.
+Creates an interface to chat and send commands to the server. The server can be connected to directly with `screen -r profile-name`, but this can cause problems if there are automatic scripts running using the `say` or `command` commands to control the server, since they use same text buffer. Using the `see` command removes the problem, as well as adding helpful shortcuts to controlling the server.
 
 ### shell
 Used by the `see` command for its command line. It can be used by itself if wanted to make many commands in a row easier to use.
@@ -86,7 +88,7 @@ General config options (all are optional besides profile_list):
 
 Profile specific:
 * `type`              the type of server. Right now, only minecraft is supported.
-* `autostart`         if the server should be started when `console start all` is run. This allows profiles to be configured without needing to run automaticlly.
+* `autostart`         if the server should be started when `console start all` is run. This allows profiles to be configured without needing to run automatically.
 * `server_path`       the location of the server directory. Where the server files are saved. If not specified, will default to `server_root/profile_name`.
 * `backup_path`       the location of the backup directory. If not specified, backups will be disabled for that profile.
 * `world`             the name of the world directory. This allows multiple worlds (maps) to be used per profile. Put a different server.properties file in each world directory, then change this `world` option to select the different world to use.
