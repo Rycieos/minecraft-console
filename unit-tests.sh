@@ -72,7 +72,7 @@ testStart() {
 }
 
 
-if [ -x shunit2-2.0.3/src/shell/shunit2 ]; then
+if [ -e shunit2-2.0.3/src/shell/shunit2 ]; then
     . shunit2-2.0.3/src/shell/shunit2
 else
     . shunit2
