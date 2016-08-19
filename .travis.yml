@@ -1,5 +1,9 @@
 language: bash
 
+before_install:
+   - sudo apt-get -qq update
+   - sudo apt-get install -y rsync screen
+
 before_script:
     - curl -L "http://downloads.sourceforge.net/shunit2/shunit2-2.0.3.tgz" | tar zx
 
