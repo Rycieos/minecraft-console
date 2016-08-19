@@ -4,7 +4,7 @@ before_install:
    - sudo apt-get install -y rsync screen
 
 before_script:
-    - curl -L https://raw.githubusercontent.com/Rycieos/assert.sh/master/assert.sh
+    - curl -LSo https://raw.githubusercontent.com/Rycieos/assert.sh/master/assert.sh assert.sh
 
 script:
     - bash tests.sh
