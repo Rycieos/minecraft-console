@@ -62,7 +62,7 @@ check_config() {
         echo "Profile ${profile} has unsupported 'updateable' of '${updateable}'"
 
     elif [ "$1" == "strict" ]; then
-        if [ ! -d "${server_path}/${world}" ]; then
+        if [ -n "${world}" ] && [ ! -d "${server_path}/${world}" ]; then
             echo "Profile ${profile} has 'world' that does not exist: '${world}'"
             echo "Is it possible that the server is empty and needs to be updated?"
         elif [ -z "${jar_name}" ]; then
@@ -106,7 +106,7 @@ start() {
         { echo "Cannot enter server location!"; return 12; }
     if [ "${type}" == "minecraft" ]; then
         # Copy the server.properties file to allow for multiple world configurations
-        if [ -e "${world}"/server.properties ]; then
+        if [ -n "${world}" ] && [ -e "${world}"/server.properties ]; then
             cp -f "${world}"/server.properties server.properties
         fi
     fi
@@ -152,6 +152,7 @@ start() {
             fi
         else
             echo "${profile} server seemes to have crashed!"
+            return 9
         fi
     fi
 }

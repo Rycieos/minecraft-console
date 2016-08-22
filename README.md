@@ -91,7 +91,7 @@ Profile specific:
 * `autostart`         if the server should be started when `console start all` is run. This allows profiles to be configured without needing to run automatically.
 * `server_path`       the location of the server directory. Where the server files are saved. If not specified, will default to `server_root/profile_name`.
 * `backup_path`       the location of the backup directory. If not specified, backups will be disabled for that profile.
-* `world`             the name of the world directory. This allows multiple worlds (maps) to be used per profile. Put a different server.properties file in each world directory, then change this `world` option to select the different world to use.
+* `world`             the name of the world directory. This allows multiple worlds (maps) to be used per profile. Put a different server.properties file in each world directory, then change this `world` option to select the different world to use. If left empty, console will not copy or change the server.properties file.
 * `jar_name`          the jar file to run for the profile. It accepts * wildcards for searching for a jar file. This allows for updating without changing the config.
 * `server_command`    the command to run when starting the server. Probably want to have `${java}` at the beginning and `${jar_name}` after the -jar flag.
 * `updateable`        the type of server if updating is wanted, false otherwise. This is used to discover what version to update the profile.

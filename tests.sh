@@ -22,39 +22,38 @@ reset() {
 reset
 
 # Check config
-  check_config | grep -q 'default_time'
-  assert_raises "" $?
+  assert_contains "check_config" "'default_time' is not set"
   default_time=1
 
   player_list_path="/tmp/foo"
-  assert_raises "check_config | grep -q 'player_list_path'"
+  assert_contains "check_config" "'player_list_path' does not exist"
   mkdir "${player_list_path}"
 
-  assert_raises "check_config | grep -q 'type'"
+  assert_contains "check_config" "unsupported 'type'"
   type="minecraft"
 
-  assert_raises "check_config | grep -q 'autostart'"
+  assert_contains "check_config" "unsupported 'autostart'"
   autostart="true"
 
-  assert_raises "check_config | grep -q 'server_path'"
+  assert_contains "check_config" "blank 'server_path'"
   server_path="/tmp/bar"
 
-  assert_raises "check_config | grep -q 'that does not exist'"
+  assert_contains "check_config" "'server_path' that does not exist"
   mkdir "${server_path}"
   chmod 100 "${server_path}"
 
-  assert_raises "check_config | grep -q 'that is not readable'"
+  assert_contains "check_config" "'server_path' that is not readable"
   chmod 500 "${server_path}"
 
-  assert_raises "check_config | grep -q 'that is not writeable'"
+  assert_contains "check_config" "'server_path' that is not writeable"
   chmod 700 "${server_path}"
 
-  assert_raises "check_config | grep -q 'server_command'"
+  assert_contains "check_config" "blank 'server_command'"
   server_command="foo"
 
-  assert_raises "check_config | grep -q 'updateable'"
+  assert_contains "check_config" "unsupported 'updateable'"
   updateable="true"
-  assert_raises "check_config | grep -q 'updateable'"
+  assert_contains "check_config" "unsupported 'updateable'"
   updateable="vanilla"
 
   #assert_raises "check_config strict | grep -q 'world'"
@@ -80,7 +79,7 @@ reset
 
   # Check autorun check
   autostart="false"
-  assert "start auto" 'The test server is not set to be autorun. Server not started'
+  assert_contains "start auto" 'The test server is not set to be autorun'
 
   # No server dir exists yet
   server_path="${useDir}"
