@@ -127,10 +127,10 @@ start() {
     if [ ! -x "${jar_name}" ]; then
         echo "${jar_name} is not executable, trying to set it"
         chmod +x "${jar_name}"
-    fi
-    if [ ! -x "${jar_name}" ]; then
-        echo "${jar_name} is not exectuable, cannot start the server"
-        return 13
+        if [ ! -x "${jar_name}" ]; then
+            echo "${jar_name} is not executable, cannot start the server"
+            return 13
+        fi
     fi
 
     # Launch it
@@ -537,8 +537,17 @@ shell() {
     done
 }
 
+listener() {
+    script="$0"
+    if [ -h "$script" ]; then
+        script="$(readlink -f "$script")"
+    fi
+    # shellcheck source=minecraft-listener
+    . "$(dirname "$script")/minecraft-listener"
+}
+
 listenerstart() {
-    screen -dmS "listener-${profile}" "$0" listener "${profile}" &
+    screen -dmS "listener-${profile}" "$0" "listener" "${profile}" &
 }
 
 listenerstop() {
@@ -640,7 +649,7 @@ EOF
     # Load the configuration to check it
     echo "Checking new config..."
     # shellcheck source=minecraft-console.config
-    source "${CONFIG_FILE}"
+    . "${CONFIG_FILE}"
 
     for profile in "${profile_list[@]}"; do
         defaults
@@ -695,7 +704,7 @@ if [ ! -e "${CONFIG_FILE}" ] && [ "$1" != "config" ]; then
 elif [ "${SWITCH}" != "config" ] && [ "${SWITCH}" != "new" ] && [ "${SWITCH}" != "add" ]; then
     # Load the configuration only if we aren't trying to change it
     # shellcheck source=minecraft-console.config
-    source "${CONFIG_FILE}"
+    . "${CONFIG_FILE}"
 fi
 
 if [ "$2" == "all" ]; then
@@ -794,7 +803,7 @@ case "${SWITCH}" in
     ;;
     listener)
         load_profile
-        . minecraft-listener console
+        listener
     ;;
     listener-start)
         load_profile

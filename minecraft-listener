@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "$1" != "console" ]; then
+if [ -z "${profile}" ]; then
     echo "Needs to be called from console script."
     echo "eg: console listener vanilla"
     exit 1
