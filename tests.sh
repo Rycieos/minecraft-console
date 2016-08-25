@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# shellcheck source=../assert.sh/assert.sh
 . assert.sh
 
 # Setup
@@ -124,13 +125,13 @@ reset
   cd "${startDir}"
 
   # Test eula not existing
-  assert_raises '[ ! -e "${useDir}/eula.txt" ]'
+  assert_not_exists "${useDir}/eula.txt"
   eula="true"
 
   # Test eula creation
   start debug >/dev/null 2>&1
   cd "${startDir}"
-  assert_raises '[ -e "${useDir}/eula.txt" ]'
+  assert_exists "${useDir}/eula.txt"
 
   assert_end start
 reset
