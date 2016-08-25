@@ -97,12 +97,12 @@ reset
 reset
 
 # Start
-  # Check server running check
+  # Test server running check
   is_running() { return 0; }
   assert_raises "start" 7
   is_running() { return 1; }
 
-  # Check autorun check
+  # Test autorun check
   autostart="false"
   assert_contains "start auto" 'The test server is not set to be autorun'
 
@@ -112,7 +112,7 @@ reset
   cd "${startDir}"
   mkdir "${useDir}"
 
-  # Test no file can't be exectuable
+  # Test no file can't be executable
   jar_name="test.jar"
   assert_raises "start" 13
   cd "${startDir}"
@@ -136,10 +136,103 @@ reset
 reset
 
 # Stop
-  # Check server running check
+  # Test server running check
   is_running() { return 1; }
   assert_raises "stop" 8
 
   assert_end stop
 reset
 
+# Backup
+  # Test backup_path check
+  assert_raises "backup" 15
+  backup_path="/tmp/foo"
+
+  # Test not running check
+  is_running() { return 1; }
+  assert_contains "backup" "server is not running"
+
+  # Test force backup
+  assert_contains "backup force" "Backing up the"
+
+  # Test actual backup
+  test_file="foo"
+  is_running() { return 0; }
+  rm -rf "${backup_path}"
+  mkdir "${server_path}"
+  touch "${server_path}/${test_file}"
+  assert_contains "backup" "The backup path ${backup_path}"
+
+  # Test backup copied file
+  assert_exists "${backup_path}/current/${test_file}"
+
+  assert_end backup
+reset
+
+# Restore
+  # Test backup_path check
+  unset backup_path
+  assert_raises "restore" 15
+  backup_path="/tmp/foo"
+
+  # Test backup_path existing
+  assert_contains "restore" "'backup_path' that does not exist"
+  mkdir "${backup_path}"
+
+  # Test date format check
+  assert_contains "restore '1970-01-01 101010'" "Incorrect date format"
+
+  # Test backup opening
+  chmod 000 "${backup_path}"
+  assert_raises "restore '1970-01-01 01:00:00'" 12
+
+  assert_end restore
+reset
+
+# Say
+  is_running() { return 1; }
+  assert_raises "say" 8
+
+  assert_end say
+reset
+
+# Command
+  is_running() { return 1; }
+  assert_raises "command" 8
+
+  assert_end command
+reset
+
+# See
+  is_running() { return 1; }
+  assert_raises "see" 8
+
+  assert_end see
+reset
+
+# Update
+  # Test update setting check
+  updateable="false"
+  assert_raises "update" 19
+  updateable="true"
+
+  # Test update type check
+  type="foobar"
+  assert_raises "update"
+  type="minecraft"
+
+  assert_contains "update" "Unsupported type of Minecraft"
+
+  # Test updated needed check
+  jar_name="minecraft_server.1.0.jar"
+  assert_contains "update 1.0" "server is up to date"
+
+  assert_end update
+reset
+
+# List
+  profile_list=("foo" "bar")
+  assert_contains "list" "foo bar"
+
+  assert_end list
+reset
