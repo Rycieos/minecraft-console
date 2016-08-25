@@ -56,7 +56,32 @@ reset
   assert_contains "check_config" "unsupported 'updateable'"
   updateable="vanilla"
 
-  #assert_raises "check_config strict | grep -q 'world'"
+  world="testWorld"
+  assert_contains "check_config strict" "'world' that does not exist"
+  mkdir "${server_path}/${world}"
+  assert_contains "check_config strict" "has blank 'jar_name'"
+  unset world
+
+  assert_contains "check_config strict" "has blank 'jar_name'"
+  jar_search="foo.jar"
+
+  assert_contains "check_config strict" "has no jar file matching"
+  jar_name="foo.jar bar.jar"
+
+  assert_contains "check_config strict" "has multiple files matching"
+  jar_name="foo.jar"
+
+  assert_contains "check_config strict" "'jar_name' that does not exist"
+  touch "${server_path}/${jar_name}"
+  chmod 100 "${server_path}/${jar_name}"
+
+  assert_contains "check_config strict" "'jar_name' that is not readable"
+  chmod 500 "${server_path}/${jar_name}"
+
+  assert_contains "check_config strict" "'jar_name' that is not writeable"
+  chmod 600 "${server_path}/${jar_name}"
+
+  assert_raises "check_config strict"
 
   assert_end config
 reset
