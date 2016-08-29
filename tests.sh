@@ -5,18 +5,17 @@
 
 # Setup
 set +o nounset
-startDir=$(pwd)
-cd "${startDir}"
+startDir="$(pwd)"
 useDir="testDir"
 export CONFIG_FILE="${startDir}/config"
 
 reset() {
-    cd "${startDir}"
-    rm -rf "${useDir}" "/tmp/foo" "/tmp/bar"
+  cd "${startDir}"
+  rm -rf "${useDir}" "/tmp/foo" "/tmp/bar"
 
-    profile="test"
-    # This loads no config, just functions
-    . console lib
+  profile="test"
+  # This loads no config, just functions
+  . console lib
 }
 
 # Tests
