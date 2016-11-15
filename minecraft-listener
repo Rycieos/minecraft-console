@@ -14,7 +14,7 @@ fi
 
 LOG_FILE="${server_path}/logs/latest.log"
 # Won't work on 1.7.X, but it won't do any harm either
-FIREWORK="~ ~ ~ summon FireworksRocketEntity ~ ~ ~ {LifeTime:20,FireworksItem:{id:fireworks,Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:0,Trail:1,Colors:[2723327,13565739],FadeColors:[13344511]}]}}}}"
+FIREWORK="~ ~ ~ summon minecraft:fireworks_rocket ~ ~ ~ {LifeTime:20,FireworksItem:{id:fireworks,Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:0,Trail:1,Colors:[2723327,13565739],FadeColors:[13344511]}]}}}}"
 CHAT_FILE="${server_path}/logs/chat.log"
 MINECRAFT_MAP_COMMAND="${HOME}/bin/minecraftmap request"
 TIMES_PATH="${server_path}/times"
@@ -36,6 +36,12 @@ players() {
 text() {
     # Sends the contents to the screen as pure text to a specific player
     send_server "tellraw $1 {\"text\":\"${*:2}\"}"
+}
+
+is_running() {
+    # Checks for the named process
+    # shellcheck disable=2046
+    return $(pgrep -u "$(whoami)" -f "${1}" > /dev/null)
 }
 
 read_lines=$(wc -l < "${LOG_FILE}")
