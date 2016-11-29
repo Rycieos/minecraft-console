@@ -182,7 +182,7 @@ while true; do
             if echo "${player}" | grep -E -q "(${ops})"; then
                 send_server "say Hello there, Master."
             else
-                send_server "say Hello there, little one."
+                send_server "say Hello there, user."
             fi
 
         elif echo "${chat_line}" | grep -i "you there" | grep -i -q "server"; then
