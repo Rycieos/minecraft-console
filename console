@@ -485,53 +485,37 @@ EOF
 }
 
 shell() {
-    mode="command"
     while :; do
-        if [ "${mode}" == "command" ]; then
-            echo -n "c "
-        else
-            echo -n "s "
-        fi
         echo -n "> "
         read -r value
         # shellcheck disable=2086
         set -- ${value}
         case "$1" in
-            exit|:q|quit)
+            exit|/exit|:q|quit|/quit)
                 screen -S "console-${profile}" -X quit >& /dev/null
                 return 0
             ;;
-            nick)
+            /nick)
                 shift 1
                 nick="$*"
             ;;
-            help)
+            /help)
                 echo "c|s|exit|nick|help"
             ;;
-            c|command)
-                shift 1
+            /*)
                 # Only send something if line is not blank
-                if [ -n "$*" ]; then
+                if [ "$*" != "/" ]; then
                     send_server "$*"
                 fi
-                mode="command"
             ;;
-            s|say|chat)
-                shift 1
-                mode="say"
-            ;&
             *)
                 # Only send something if line is not blank
                 if [ -n "$*" ]; then
-                    if [ "${mode}" == "command" ]; then
-                        send_server "$*"
-                    else
-                        if [ -n "${nick}" ]; then
-                            send_server "say <${nick}> $*"
-                        else
-                            send_server "say $*"
-                        fi
-                    fi
+                      if [ -n "${nick}" ]; then
+                          send_server "say <${nick}> $*"
+                      else
+                          send_server "say $*"
+                      fi
                 fi
         esac
     done
