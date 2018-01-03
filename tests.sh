@@ -4,7 +4,7 @@
 . assert.sh
 
 # Setup
-set +o nounset
+set -e +o nounset
 startDir="$(pwd)"
 useDir="testDir"
 export CONFIG_FILE="${startDir}/config"
@@ -128,6 +128,7 @@ reset
   eula="true"
 
   # Test eula creation
+  server_command="return 0"
   start debug >/dev/null 2>&1
   cd "${startDir}"
   assert_exists "${useDir}/eula.txt"

@@ -38,7 +38,7 @@ is_running() {
 }
 
 check_config() {
-    # Scrict is if we need the files to exist already or not.
+    # Strict is if we need the files to exist already or not.
     if [ -z "${default_time}" ]; then
         echo "'default_time' is not set: '${default_time}'"
     elif [ -n "${player_list_path}" ] && [ ! -d "${player_list_path}" ]; then
