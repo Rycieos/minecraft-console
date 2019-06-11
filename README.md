@@ -3,6 +3,9 @@ Bash scripts for managing Minecraft servers.
 
 [![Build Status](https://travis-ci.org/Rycieos/minecraft-console.svg?branch=master)](https://travis-ci.org/Rycieos/minecraft-console)
 
+## Unmaintained
+I no longer have enough interest in Minecraft to keep this program up to date with Mojang's constant API changes. I have fixed all simple issues, and everything works on 1.14. But while checking for updates works, downloading an update does not, thanks to Mojang making the download locations complicated. This whole project should have been rewritten in Python a long time ago, and that is probably the only way to parse all the JSON needed to find the new download links.
+
 ## Console
 
 `console` manages the server's startup, shutdown, backups, and much more. It works as a manager, leaving the server running as the daemon. It is designed to copy the syntax of init systems like init.d or systemd.

@@ -14,7 +14,7 @@ fi
 
 LOG_FILE="${server_path}/logs/latest.log"
 # Won't work on 1.7.X, but it won't do any harm either
-FIREWORK="~ ~ ~ summon minecraft:fireworks_rocket ~ ~ ~ {LifeTime:20,FireworksItem:{id:fireworks,Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:0,Trail:1,Colors:[2723327,13565739],FadeColors:[13344511]}]}}}}"
+FIREWORK="summon minecraft:firework_rocket ~ ~ ~ {LifeTime:20,FireworksItem:{id:fireworks,Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:0,Trail:1,Colors:[2723327,13565739],FadeColors:[13344511]}]}}}}"
 CHAT_FILE="${server_path}/logs/chat.log"
 MINECRAFT_MAP_COMMAND="${HOME}/bin/minecraftmap request"
 TIMES_PATH="${server_path}/times"
@@ -30,7 +30,7 @@ ops() {
 }
 
 players() {
-    num_players=$(command "list" && sleep 2 && grep "players" "${LOG_FILE}" | grep "online" | tail -1 | sed 's/.*\ \([0-9]\+\).*/\1/')
+    num_players=$(command "list" && sleep 2 && grep "players online" "${LOG_FILE}" | tail -1 | sed 's/.*\ There\ are\ \([0-9]\+\).*/\1/')
 }
 
 text() {
@@ -75,7 +75,7 @@ while true; do
                     text "${player}" "You were last logged in at ${time}"
                 else
                     text "${player}" "This is your first time on this server!"
-                    command "execute ${player}" "${FIREWORK}"
+                    command "execute at ${player} run" "${FIREWORK}"
                 fi
 
                 if [ "${num_players}" -lt 2 ]; then
@@ -141,7 +141,7 @@ while true; do
 
         elif [[ $chat_line == "!firework" ]]; then
             text "${player}" "Fine."
-            command "execute ${player}" "${FIREWORK}"
+            command "execute at ${player} run" "${FIREWORK}"
 
         elif [[ $chat_line == "!maprequest" ]]; then
             if is_running "updatemap"; then
@@ -193,5 +193,5 @@ while true; do
             fi
         fi
     done
-    sleep .2
+    read -t .2
 done

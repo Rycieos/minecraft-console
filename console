@@ -370,12 +370,12 @@ update() {
             # Awkward pieces of code that strip the current Minecraft versions from the version file
             current_version=$(\
                 wget -q -O - "${version_file}" |
-                sed 's/.*"release":"\([0-9a-zA-Z.-]*\)".*/\1/')
+                sed 's/.*"release": *"\([0-9a-zA-Z.-]*\)".*/\1/')
             echo "The newest stable version is ${current_version}"
         elif [ "${updateable}" == "snapshot" ]; then
             current_version=$(\
                 wget -q -O - "${version_file}" |
-                sed 's/.*"snapshot":"\([0-9a-zA-Z.-]*\)".*/\1/')
+                sed 's/.*"snapshot": *"\([0-9a-zA-Z.-]*\)".*/\1/')
             echo "The newest snapshot is ${current_version}"
         else
             echo "Unsupported type of Minecraft release. Please fix this profile"
